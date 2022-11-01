@@ -1,0 +1,9 @@
+build/
+paths_dp
+visits_dp
+env/
+*.png
+data/*
+!data/.placeholder
+figs/*
+!figs/.placeholder
