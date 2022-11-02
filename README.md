@@ -1,6 +1,5 @@
-This is the code that performs experimental evaluation of the dynamic
-programming approach to computing the sizes of bridgelets, which were recently
-introduced by Krumm [1].
+This code provides a dynamic programming approach for efficiently computing with bridgelets, which were recently
+introduced by John Krumm [1]. It in particular performs an experimental evaluation of computing the sizes of bridgelets.
 
 To run it, you need a compiler set that supports C++17; make; cmake; and
 python3 with libraries listed in [requirements file](requirements.txt) to make
