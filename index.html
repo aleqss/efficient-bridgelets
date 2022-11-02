@@ -1,20 +1,458 @@
-<!doctype html>
-
-<html lang="en-GB">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta property="og:title" content="Computing bridgelets efficiently">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://aleqss.github.io/efficient-bridgelets/">
-    <meta property="og:description" content="We recap the concept of bridgelets, introduced by Krumm, and show how to compute them efficiently.">
-    <meta name="description" content="Introduction to bridgelets and the way to compute them.">
-    <meta name="author" content="Aleksandr Popov">
-    <title>Efficient Bridgelets</title>
-    <!-- <link rel="stylesheet" href="css/styles.css?v=1.0"> -->
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Kevin Buchin @kbuchin" />
+  <meta name="author" content="Aleksandr Popov @aleqss" />
+  <title>Efficiently Computing Bridgelets</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
 </head>
-
 <body>
-
+<header id="title-block-header">
+<h1 class="title">Efficiently Computing Bridgelets</h1>
+<p class="author">Kevin Buchin<br />
+<a href="https://github.com/kbuchin/">@kbuchin</a></p>
+<p class="author">Aleksandr Popov<br />
+<a href="https://github.com/aleqss/">@aleqss</a></p>
+</header>
+<p>Krumm <a href="#ref">[1]</a> has recently
+introduced the concept of <em>bridgelets.</em> In his work, he aims to
+use a data-driven approach to interpolate trajectories between the
+measured locations. The main idea is to compute probabilities for
+visiting certain regions in between measurements. The regions in
+question are the cells of a square grid that subdivides the location
+space. By also discretising time, Krumm arrives at the model where at
+each time step, the trajectory can stay in the current cell or move to
+one of its direct neighbours. He uses this model to compute visit
+probabilities of cells in a grid based on a set of real-life
+trajectories.</p>
+<figure>
+<img src="trajectories.svg" id="fig:trajectories"
+alt="Illustration of a bridgelet from (0, 0) to (40, 20) in T = 400 steps. Figure shows five walks drawn uniformly at random from \approx 7\cdot 10^{273} walks in the bridgelet. Walks were sampled in \mathcal{O}(T) time (after \mathcal{O}(T^3)-time preprocessing) using the dynamic program." />
+<figcaption aria-hidden="true">Illustration of a bridgelet from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 0)</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>40</mn><mo>,</mo><mn>20</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(40, 20)</annotation></semantics></math>
+in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>400</mn></mrow><annotation encoding="application/x-tex">T = 400</annotation></semantics></math>
+steps. Figure shows five walks drawn uniformly at random from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>≈</mo><mn>7</mn><mo>⋅</mo><msup><mn>10</mn><mn>273</mn></msup></mrow><annotation encoding="application/x-tex">\approx 7\cdot 10^{273}</annotation></semantics></math>
+walks in the bridgelet. Walks were sampled in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T)</annotation></semantics></math>
+time (after
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>-time
+preprocessing) using the <a href="#dynamic-program">dynamic program</a>.</figcaption>
+</figure>
+<p>The purpose of this note is to make the computations more efficient,
+making it possible to use a finer grid and time steps, or to reasonably
+cover sparser trajectories. A <em>bridgelet</em> is the set of all walks
+between two given vertices of the grid in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+time steps. Krumm enumerates the walks explicitly to count the visits to
+the cells, which takes time exponential in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>,
+making it impractical to use for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>12</mn></mrow><annotation encoding="application/x-tex">T &gt; 12</annotation></semantics></math>.
+We show how to use dynamic programming to compute all the relevant
+statistics in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>
+time instead of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mn>5</mn><mi>T</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(5^T)</annotation></semantics></math>,
+making it feasible to compute the relevant statistics easily at least up
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>500</mn></mrow><annotation encoding="application/x-tex">T = 500</annotation></semantics></math>.
+With sufficient parallelisation and optimisation, it is possible to make
+the approach even faster, as we only need
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T)</annotation></semantics></math>
+time when computing on
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^2)</annotation></semantics></math>
+computing units in parallel. Furthermore, we show how to use this
+information to generate random trajectories that follow a certain
+distribution, in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T)</annotation></semantics></math>
+time per trajectory of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+steps.</p>
+<div id="tab:running">
+<table>
+<caption>Running times in milliseconds for the two approaches with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>12</mn></mrow><annotation encoding="application/x-tex">T = 12</annotation></semantics></math>.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Problem</th>
+<th style="text-align: center;">DP</th>
+<th style="text-align: center;">Explicit</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">All paths</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">260331</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Visiting paths from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 0)</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1, 1)</annotation></semantics></math></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">273017</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>We also provide closed-form expressions to compute the number of
+walks to a specific cell in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+steps, and show how to obtain a formula for the visit probabilities.
+Specifically, the number of walks in a bridgelet from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 0)</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>
+in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+steps is
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">|</mo><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>0</mn></mrow><mrow><mo stretchy="false" form="prefix">⌊</mo><mi>k</mi><mi>/</mi><mn>2</mn><mo stretchy="false" form="postfix">⌋</mo></mrow></munderover><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>T</mi><mrow><mi>k</mi><mo>−</mo><mn>2</mn><mi>i</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mrow><mi>T</mi><mo>−</mo><mi>k</mi><mo>+</mo><mn>2</mn><mi>i</mi></mrow><mi>i</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mrow><mi>T</mi><mo>−</mo><mi>k</mi><mo>+</mo><mn>2</mn><mi>i</mi></mrow><mrow><mi>x</mi><mo>+</mo><mi>i</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">\lvert W(x, y, T)\rvert = \sum_{i = 0}^{\lfloor k / 2\rfloor}
+\binom{T}{k - 2i}\binom{T - k + 2i}{i}\binom{T - k + 2i}{x + i},</annotation></semantics></math>
+where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mi>T</mi><mo>−</mo><mi>x</mi><mo>−</mo><mi>y</mi></mrow><annotation encoding="application/x-tex">k = T - x - y</annotation></semantics></math>.</p>
+<h1 id="dynamic-program">Dynamic Program</h1>
+<p>Some simple questions stated above can be solved by means of dynamic
+programming. The basic idea is to count paths that reach a certain cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>
+in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+steps, so we can count paths reaching this cell and its neighbours in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T + 1</annotation></semantics></math>
+steps. With some care and exploiting the symmetry of the problem, we can
+use this simple idea to also compute the visit probabilities for all
+cells on any possible path from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 0)</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>.</p>
+<h2 id="counting-paths">Counting Paths</h2>
+<p>The simplest question is the following: given a time limit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+and the point
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>,
+count the distinct paths in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W(x, y, T)</annotation></semantics></math>.
+By means of dynamic programming, we can even solve a more general
+question efficiently: given the time limit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>,
+count the paths in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W(x, y, t)</annotation></semantics></math>
+for all possible grid points
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>
+and for all
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>t</mi><mo>≤</mo><mi>T</mi></mrow><annotation encoding="application/x-tex">0 \leq t \leq T</annotation></semantics></math>.
+This can be accomplished by creating a table
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>
+on the coordinates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mi>T</mi><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>×</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mi>T</mi><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>×</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">[-T, T] \times [-T, T] \times [0, T]</annotation></semantics></math>
+and filling it out as follows:
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right"><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><mn>1</mn><mspace width="0.167em"></mspace><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right"><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><mn>0</mn><mspace width="1.0em"></mspace><mrow><mrow><mtext mathvariant="normal">for all </mtext><mspace width="0.333em"></mspace></mrow><mrow><mi>x</mi><mo>≠</mo><mn>0</mn></mrow><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> or </mtext><mspace width="0.333em"></mspace></mrow><mrow><mi>y</mi><mo>≠</mo><mn>0</mn></mrow><mtext mathvariant="normal">,</mtext></mrow></mtd></mtr><mtr><mtd columnalign="right"><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>+</mo><mn>1</mn><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="right"></mtd><mtd columnalign="left"><mo>+</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>+</mo><mn>1</mn><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="1.0em"></mspace><mrow><mrow><mtext mathvariant="normal">for all </mtext><mspace width="0.333em"></mspace></mrow><mi>x</mi><mrow><mtext mathvariant="normal">, </mtext><mspace width="0.333em"></mspace></mrow><mi>y</mi><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> and for all </mtext><mspace width="0.333em"></mspace></mrow><mrow><mi>t</mi><mo>≥</mo><mn>0</mn></mrow><mtext mathvariant="normal">.</mtext></mrow></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+P(0, 0, 0) &amp;= 1\,,\\
+P(x, y, 0) &amp;= 0 \quad\text{for all $x \neq 0$ or $y \neq 0$,}\\
+P(x, y, t + 1) &amp;= P(x, y, t) + P(x - 1, y, t) + P(x + 1, y, t)\\
+&amp;+ P(x, y - 1, t) + P(x, y + 1, t)
+\quad\text{for all $x$, $y$ and for all $t \geq 0$.}\\\end{aligned}</annotation></semantics></math></p>
+<p>Here and later we assume that out-of-bounds values in the table are
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>.
+It is easy to see that after filling the entire table, a cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P(x, y, t)</annotation></semantics></math>
+for some
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∈</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mi>T</mi><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">(x, y) \in [-T, T]^2</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">t \in [0, T]</annotation></semantics></math>
+holds the count of paths in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W(x, y, t)</annotation></semantics></math>.
+Furthermore, for any
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>
+out of range, the value should clearly be
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>,
+as those points are not reachable in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+steps. The dynamic program can clearly be computed in time
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>.
+We show an example result for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">T = 10</annotation></semantics></math>
+below.</p>
+<figure>
+<img src="paths_dp_raw.svg"/>
+<img src="paths_dp_log.svg" id="fig:paths_dp"
+alt="The heat map for path counts at T = 10, in raw form (left) and on a logarithmic scale (right). The white cells are unreachable." />
+<figcaption aria-hidden="true">The heat map for path counts at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">T = 10</annotation></semantics></math>,
+in raw form (left) and on a logarithmic scale (right). The white cells
+are unreachable.</figcaption>
+</figure>
+<h2 id="counting-paths-through-a-vertex">Counting Paths Through a
+Vertex</h2>
+<p>Secondly, we can solve the following question: given a time limit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+and the point
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>,
+count the paths in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W(x, y, T)</annotation></semantics></math>
+that go through a vertex
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(a, b)</annotation></semantics></math>.
+We can compute these counts efficiently for all possible vertices
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(a, b)</annotation></semantics></math>.
+We give further details here.</p>
+<figure>
+<img src="visits_dp_raw.svg"/>
+<img src="visits_dp_log.svg" id="fig:visits_dp"
+alt="The heat map for counting paths that visit the respective cells on a path from (0, 0) to (1, 1) with T = 10, in raw form (left) and on a logarithmic scale (right). The white cells are not visited." />
+<figcaption aria-hidden="true">The heat map for counting paths that
+visit the respective cells on a path from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 0)</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1, 1)</annotation></semantics></math>
+with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">T = 10</annotation></semantics></math>,
+in raw form (left) and on a logarithmic scale (right). The white cells
+are not visited.</figcaption>
+</figure>
+<h2 id="counting-with-obstacles">Counting with Obstacles</h2>
+<p>The approach is quite flexible. In particular, it can be adapted to
+counting paths on a grid with holes that represent obstacles.</p>
+<figure>
+<img src="wall_gap_raw.svg"/>
+<img src="wall_gap_log.svg" id="fig:wall_gap"
+alt="The heat map for path counts at T = 10, in the presence of a wall with a gap, in raw form (left) and on a logarithmic scale (right). Note how the cells on the right side are not symmetric to the ones on the left side and, in particular, the count in the cell (2, -1) is lower than in (2, -2)." />
+<figcaption aria-hidden="true">The heat map for path counts at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">T = 10</annotation></semantics></math>,
+in the presence of a wall with a gap, in raw form (left) and on a
+logarithmic scale (right). Note how the cells on the right side are not
+symmetric to the ones on the left side and, in particular, the count in
+the cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2, -1)</annotation></semantics></math>
+is lower than in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2, -2)</annotation></semantics></math>.</figcaption>
+</figure>
+<figure>
+<img src="sm_wall_gap_raw.svg"/>
+<img src="sm_wall_gap_log.svg" id="fig:sm_wall_gap"
+alt="The heat map for path counts at T = 10, in the presence of a smaller wall with a gap, in raw form (left) and on a logarithmic scale (right)." />
+<figcaption aria-hidden="true">The heat map for path counts at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">T = 10</annotation></semantics></math>,
+in the presence of a smaller wall with a gap, in raw form (left) and on
+a logarithmic scale (right).</figcaption>
+</figure>
+<figure>
+<img src="sm_wall_raw.svg"/>
+<img src="sm_wall_log.svg" id="fig:sm_wall"
+alt="The heat map for path counts at T = 10, in the presence of a small wall, in raw form (left) and on a logarithmic scale (right)." />
+<figcaption aria-hidden="true">The heat map for path counts at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">T = 10</annotation></semantics></math>,
+in the presence of a small wall, in raw form (left) and on a logarithmic
+scale (right).</figcaption>
+</figure>
+<p>Suppose we have some representation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>
+of a set of obstacles. Depending on the application, it may be best
+represented as a boundary, or directly as a set of cells; its complexity
+affects the running time. Then we can formulate the following DP for
+counting paths in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P(x, y, t)</annotation></semantics></math>
+for all
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x, y)</annotation></semantics></math>
+and all
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>≤</mo><mi>T</mi></mrow><annotation encoding="application/x-tex">t \leq T</annotation></semantics></math>:
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right"><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><mn>1</mn><mspace width="0.167em"></mspace><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right"><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><mn>0</mn><mspace width="1.0em"></mspace><mrow><mrow><mtext mathvariant="normal">for all </mtext><mspace width="0.333em"></mspace></mrow><mrow><mi>x</mi><mo>≠</mo><mn>0</mn></mrow><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> or </mtext><mspace width="0.333em"></mspace></mrow><mrow><mi>y</mi><mo>≠</mo><mn>0</mn></mrow><mtext mathvariant="normal">,</mtext></mrow></mtd></mtr><mtr><mtd columnalign="right"><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><mn>0</mn><mspace width="1.0em"></mspace><mrow><mrow><mtext mathvariant="normal">for all </mtext><mspace width="0.333em"></mspace></mrow><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∈</mo><mi>S</mi></mrow><mtext mathvariant="normal">,</mtext></mrow></mtd></mtr><mtr><mtd columnalign="right"><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left"><mo>=</mo><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>+</mo><mn>1</mn><mo>,</mo><mi>y</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="right"></mtd><mtd columnalign="left"><mo>+</mo><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>P</mi><mi>o</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>+</mo><mn>1</mn><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="1.0em"></mspace><mrow><mrow><mtext mathvariant="normal">for all </mtext><mspace width="0.333em"></mspace></mrow><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∉</mo><mi>S</mi></mrow><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> and for all </mtext><mspace width="0.333em"></mspace></mrow><mrow><mi>t</mi><mo>≥</mo><mn>0</mn></mrow><mtext mathvariant="normal">.</mtext></mrow></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+P_o(0, 0, 0) &amp;= 1\,,\\
+P_o(x, y, 0) &amp;= 0 \quad\text{for all $x \neq 0$ or $y \neq 0$,}\\
+P_o(x, y, t + 1) &amp;= 0 \quad\text{for all $(x, y) \in S$,}\\
+P_o(x, y, t + 1) &amp;= P_o(x, y, t) + P_o(x - 1, y, t) + P_o(x + 1, y, t)\\
+&amp;+ P_o(x, y - 1, t) + P_o(x, y + 1, t)
+\quad\text{for all $(x, y) \notin S$ and for all $t \geq 0$.}\\\end{aligned}</annotation></semantics></math>
+We discuss computing probabilities in the setting with obstacles
+here.</p>
+<h2 id="subsec:sampling">Generating Random Trajectories</h2>
+<p>Computing these statistics using dynamic programming makes it easier
+to also sample realistic trajectories from bridgelets. The easiest way
+is to generate the trajectory starting from the end point, one segment
+at a time, by reconstructing the transition probabilities using the
+counts stored in the DP. The approach takes
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T)</annotation></semantics></math>
+time per trajectory, assuming the DP with path counts for the time limit
+not smaller than
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+is precomputed (which can be done in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>
+time). We show some trajectories from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 0)</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>40</mn><mo>,</mo><mn>20</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(40, 20)</annotation></semantics></math>
+in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>400</mn></mrow><annotation encoding="application/x-tex">T = 400</annotation></semantics></math>
+steps in Figure <a href="#fig:trajectories" data-reference-type="ref"
+data-reference="fig:trajectories">1</a>. These are generated based on
+the values of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>,
+without obstacles. The trajectories appear to exhibit reasonable levels
+of randomness, with (discretised) wandering behaviour spread throughout
+the trajectory.</p>
+<h1 id="closed-form-expressions">Closed-Form Expressions</h1>
+<p>We have shown the expression for the path count above; we show
+further details here.</p>
+<div class="thebibliography">
+<p><span id="ref">[1]</span> John Krumm. 2022. Maximum Entropy Bridgelets for
+Trajectory Completion. To appear in <i>Proceedings of the 30th
+International Conference on Advances in Geographic Information Systems
+(ACM SIGSPATIAL 2022).</i> <a
+href="https://www.dropbox.com/s/x2yliemk7xm1fus/paper_215.pdf?dl=0"
+class="uri">https://www.dropbox.com/s/x2yliemk7xm1fus/paper_215.pdf?dl=0</a></p>
+</div>
 </body>
 </html>

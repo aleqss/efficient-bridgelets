@@ -1,0 +1,210 @@
+\documentclass[11pt,a4paper,twoside,british]{article}
+\usepackage{babel}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{amsmath,amssymb,booktabs,csquotes,newpxtext,newpxmath,xfrac}
+\usepackage[colorlinks]{hyperref}
+
+\title{Efficiently Computing Bridgelets}
+\author{Kevin Buchin\\\href{https://github.com/kbuchin/}{@kbuchin} \and Aleksandr Popov\\\href{https://github.com/aleqss/}{@aleqss}}
+
+\begin{document}
+\maketitle
+
+Krumm~\cite{krumm} has recently introduced the concept of \emph{bridgelets.}
+In his work, he aims to use a data-driven approach to interpolate trajectories
+between the measured locations.
+The main idea is to compute probabilities for visiting certain regions in
+between measurements.
+The regions in question are the cells of a square grid that subdivides the
+location space.
+By also discretising time, Krumm arrives at the model where at each time step,
+the trajectory can stay in the current cell or move to one of its direct
+neighbours.
+He uses this model to compute visit probabilities of cells in a grid based on a
+set of real-life trajectories.
+
+\begin{figure}
+\centering
+\includegraphics{dummy.png}
+\caption{Illustration of a bridgelet from $(0, 0)$ to $(40, 20)$ in $T = 400$
+steps.
+Figure shows five walks drawn uniformly at random from $\approx 7\cdot 10^{273}$
+walks in the bridgelet.
+Walks were sampled in $\mathcal{O}(T)$ time (after $\mathcal{O}(T^3)$-time
+preprocessing) using the dynamic program.
+TODO: link}
+\label{fig:trajectories}
+\end{figure}
+
+The purpose of this note is to make the computations more efficient, making
+it possible to use a finer grid and time steps, or to reasonably cover sparser
+trajectories.
+A \emph{bridgelet} is the set of all walks between two given vertices of the
+grid in $T$ time steps.
+Krumm enumerates the walks explicitly to count the visits to the cells, which
+takes time exponential in $T$, making it impractical to use for $T > 12$.
+We show how to use dynamic programming to compute all the relevant statistics
+in $\mathcal{O}(T^3)$ time instead of $\mathcal{O}(5^T)$, making it feasible
+to compute the relevant statistics easily at least up to $T = 500$.
+With sufficient parallelisation and optimisation, it is possible to make the
+approach even faster, as we only need $\mathcal{O}(T)$ time when computing on
+$\mathcal{O}(T^2)$ computing units in parallel.
+Furthermore, we show how to use this information to generate random trajectories
+that follow a certain distribution, in $\mathcal{O}(T)$ time per trajectory of
+$T$ steps.
+
+\begin{table}
+\centering
+\begin{tabular}{l c c}
+\toprule
+Problem & DP & Explicit\\
+\midrule
+All paths & 1 & 260331\\
+Visiting paths from $(0, 0)$ to $(1, 1)$ & 4 & 273017\\
+\bottomrule
+\end{tabular}
+\caption{Running times in milliseconds for the two approaches with $T = 12$.}
+\label{tab:running}
+\end{table}
+
+We also provide closed-form expressions to compute the number of walks to a
+specific cell in $T$ steps, and show how to obtain a formula for the visit
+probabilities.
+Specifically, the number of walks in a bridgelet from $(0, 0)$ to $(x, y)$ in
+$T$ steps is
+\[\lvert W(x, y, T)\rvert = \sum_{i = 0}^{\lfloor k / 2\rfloor}
+\binom{T}{k - 2i}\binom{T - k + 2i}{i}\binom{T - k + 2i}{x + i},\]
+where $k = T - x - y$.
+
+\section{Dynamic Program}
+Some simple questions stated above can be solved by means of dynamic
+programming.
+The basic idea is to count paths that reach a certain cell $(x, y)$ in $T$
+steps, so we can count paths reaching this cell and its neighbours in $T + 1$
+steps.
+With some care and exploiting the symmetry of the problem, we can use this
+simple idea to also compute the visit probabilities for all cells on any
+possible path from $(0, 0)$ to $(x, y)$.
+
+\subsection{Counting Paths}
+The simplest question is the following: given a time limit $T$ and the point
+$(x, y)$, count the distinct paths in $W(x, y, T)$.
+By means of dynamic programming, we can even solve a more general question
+efficiently: given the time limit $T$, count the paths in $W(x, y, t)$ for all
+possible grid points $(x, y)$ and for all $0 \leq t \leq T$.
+This can be accomplished by creating a table $P$ on the coordinates
+$[-T, T] \times [-T, T] \times [0, T]$ and filling it out as follows:
+\begin{align*}
+P(0, 0, 0) &= 1\,,\\
+P(x, y, 0) &= 0 \quad\text{for all $x \neq 0$ or $y \neq 0$,}\\
+P(x, y, t + 1) &= P(x, y, t) + P(x - 1, y, t) + P(x + 1, y, t)\\
+&+ P(x, y - 1, t) + P(x, y + 1, t)
+\quad\text{for all $x$, $y$ and for all $t \geq 0$.}\\
+\end{align*}
+
+Here and later we assume that out-of-bounds values in the table are $0$.
+It is easy to see that after filling the entire table, a cell $P(x, y, t)$ for
+some $(x, y) \in [-T, T]^2$ and $t \in [0, T]$ holds the count of paths in
+$W(x, y, t)$.
+Furthermore, for any $(x, y)$ out of range, the value should clearly be $0$, as
+those points are not reachable in $T$ steps.
+The dynamic program can clearly be computed in time $\mathcal{O}(T^3)$.
+We show an example result for $T = 10$ below.
+
+\begin{figure}
+\includegraphics{dummy.png}
+\caption{The heat map for path counts at $T = 10$, in raw form (left) and on a
+logarithmic scale (right).
+The white cells are unreachable.}
+\label{fig:paths_dp}
+\end{figure}
+
+\subsection{Counting Paths Through a Vertex}
+Secondly, we can solve the following question: given a time limit $T$ and the
+point $(x, y)$, count the paths in $W(x, y, T)$ that go through a vertex
+$(a, b)$.
+We can compute these counts efficiently for all possible vertices $(a, b)$.
+We give further details here.
+
+\begin{figure}
+\includegraphics{dummy.png}
+\caption{The heat map for counting paths that visit the respective cells on a
+path from $(0, 0)$ to $(1, 1)$ with $T = 10$, in raw form (left) and on a
+logarithmic scale (right).
+The white cells are not visited.}
+\label{fig:visits_dp}
+\end{figure}
+
+\subsection{Counting with Obstacles}
+The approach is quite flexible.
+In particular, it can be adapted to counting paths on a grid with holes that
+represent obstacles.
+
+\begin{figure}[p]
+\includegraphics{dummy.png}
+\caption{The heat map for path counts at $T = 10$, in the presence of a wall
+with a gap, in raw form (left) and on a logarithmic scale (right).
+Note how the cells on the right side are not symmetric to the ones on the left
+side and, in particular, the count in the cell $(2, -1)$ is lower than in
+$(2, -2)$.}
+\label{fig:wall_gap}
+\end{figure}
+
+\begin{figure}[p]
+\includegraphics{dummy.png}
+\caption{The heat map for path counts at $T = 10$, in the presence of a smaller
+wall with a gap, in raw form (left) and on a logarithmic scale (right).}
+\label{fig:sm_wall_gap}
+\end{figure}
+
+\begin{figure}[p]
+\includegraphics{dummy.png}
+\caption{The heat map for path counts at $T = 10$, in the presence of a small
+wall, in raw form (left) and on a logarithmic scale (right).}
+\label{fig:sm_wall}
+\end{figure}
+
+Suppose we have some representation $S$ of a set of obstacles.
+Depending on the application, it may be best represented as a boundary, or
+directly as a set of cells; its complexity affects the running time.
+Then we can formulate the following DP for counting paths in $P(x, y, t)$ for
+all $(x, y)$ and all $t \leq T$:
+\begin{align*}
+P_o(0, 0, 0) &= 1\,,\\
+P_o(x, y, 0) &= 0 \quad\text{for all $x \neq 0$ or $y \neq 0$,}\\
+P_o(x, y, t + 1) &= 0 \quad\text{for all $(x, y) \in S$,}\\
+P_o(x, y, t + 1) &= P_o(x, y, t) + P_o(x - 1, y, t) + P_o(x + 1, y, t)\\
+&+ P_o(x, y - 1, t) + P_o(x, y + 1, t)
+\quad\text{for all $(x, y) \notin S$ and for all $t \geq 0$.}\\
+\end{align*}
+We discuss computing probabilities in the setting with obstacles here.
+
+\subsection{Generating Random Trajectories}\label{subsec:sampling}
+Computing these statistics using dynamic programming makes it easier to also
+sample realistic trajectories from bridgelets.
+The easiest way is to generate the trajectory starting from the end point, one
+segment at a time, by reconstructing the transition probabilities using the
+counts stored in the DP.
+The approach takes $\mathcal{O}(T)$ time per trajectory, assuming the DP with
+path counts for the time limit not smaller than $T$ is precomputed (which can be
+done in $\mathcal{O}(T^3)$ time).
+We show some trajectories from $(0, 0)$ to $(40, 20)$ in $T = 400$ steps in
+Figure~\ref{fig:trajectories}.
+These are generated based on the values of $P$, without obstacles.
+The trajectories appear to exhibit reasonable levels of randomness, with
+(discretised) wandering behaviour spread throughout the trajectory.
+
+\section{Closed-Form Expressions}
+We have shown the expression for the path count above; we show further details
+here.
+
+\begin{thebibliography}{9}
+\bibitem{krumm}
+John Krumm.
+2022.
+Maximum Entropy Bridgelets for Trajectory Completion.
+To appear in \textit{Proceedings of the 30th International Conference on
+Advances in Geographic Information Systems (ACM SIGSPATIAL 2022).}
+\url{https://www.dropbox.com/s/x2yliemk7xm1fus/paper_215.pdf?dl=0}
+\end{thebibliography}
+\end{document}
