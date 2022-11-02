@@ -193,8 +193,7 @@ time (after
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>-time
 preprocessing) using the <a href="#dynamic-program">dynamic program</a>.</figcaption>
 </figure>
-<p>The purpose of this note is to make the computations more efficient,
-making it possible to use a finer grid and time steps, or to reasonably
+<p>The dynamic program makes  computating with bridgelets more efficient, since it avoids computing the bridgelets explicitly. This makes it possible to use a finer grid and time steps, or to reasonably
 cover sparser trajectories. A <em>bridgelet</em> is the set of all walks
 between two given vertices of the grid in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
@@ -203,7 +202,7 @@ the cells, which takes time exponential in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>,
 making it impractical to use for
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>12</mn></mrow><annotation encoding="application/x-tex">T &gt; 12</annotation></semantics></math>.
-We show how to use dynamic programming to compute all the relevant
+Our dynamic programming approach computes all the relevant
 statistics in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>
 time instead of
@@ -446,14 +445,12 @@ of randomness, with (discretised) wandering behaviour spread throughout
 the trajectory.</p>
 <h1 id="closed-form-expressions">Closed-Form Expressions</h1>
 <p>We have shown the expression for the path count above; we show
-further details <a href="extra.pdf">here</a>.</p>
+further details <a href="extra.pdf">here (also includes a mathematical derivation for the visit probabilities)</a>.</p>
 <div class="thebibliography">
 <p><span id="ref">[1]</span> John Krumm. 2022. Maximum Entropy Bridgelets for
 Trajectory Completion. To appear in <i>Proceedings of the 30th
 International Conference on Advances in Geographic Information Systems
-(ACM SIGSPATIAL 2022).</i> <a
-href="https://www.dropbox.com/s/x2yliemk7xm1fus/paper_215.pdf?dl=0"
-class="uri">https://www.dropbox.com/s/x2yliemk7xm1fus/paper_215.pdf?dl=0</a></p>
+(ACM SIGSPATIAL 2022).</i></p>
 </div>
 </body>
 </html>
