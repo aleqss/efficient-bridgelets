@@ -7,7 +7,9 @@ _If you wish to understand how the code works and learn more about what we can
 compute, check the
 [companion website](https://aleqss.github.io/efficient-bridgelets/)._
 
-![Generated trajectories for $T = 400$, going from $(0, 0)$ to $(40, 20)$.](/../gh-pages/trajectories.svg)
+![Five random trajectories from $(0, 0)$ to $(40, 20)$.](/../gh-pages/trajectories.svg
+"Illustration of a bridgelet: generated trajectories from $(0, 0)$ to $(40, 20)$
+in $400$ steps.")
 
 # Capabilities
 With this code, given a time limit $T$ and a starting point $(a, b)$, we can:
@@ -30,8 +32,9 @@ from $(0, 0)$ to $(x, y)$ in $t$ steps that visit that cell.
 Dividing those counts by the sum of all values gives visit probabilities at the
 desired level of precision.
 Due to the symmetry, we only compute the tables for $0 < y \leq x \leq t$.
-The tables are [available](/releases/latest/download/visits.zip) for the values
-of $t$ from $1$ to $100$. 
+The tables are
+[available](/aleqss/efficient-bridgelets/releases/latest/download/visits.zip)
+for the values of $t$ from $1$ to $100$. 
 
 # Build requirements
 To run the code, you need a compiler set that supports C++17; make; cmake; GMP;
@@ -62,5 +65,6 @@ python3 -m venv env && source env/bin/activate && pip install -r requirements.tx
 ```
 This generates plots in [figs/](figs/) based on the files in [data/](data/).
 
-[1] John Krumm. Maximum Entropy Bridgelets for Trajectory Completion. 2022.
-Accepted to SIGSPATIAL 2022.
+[1] John Krumm. 2022. Maximum Entropy Bridgelets for Trajectory Completion.
+To appear in _Proceedings of the 30th International Conference on Advances in
+Geographic Information Systems (ACM SIGSPATIAL 2022)._
