@@ -36,16 +36,17 @@ TODO: link}
 \label{fig:trajectories}
 \end{figure}
 
-The purpose of this note is to make the computations more efficient, making
-it possible to use a finer grid and time steps, or to reasonably cover sparser
-trajectories.
+The dynamic program makes computing with bridgelets more efficient, since it
+avoids constructing the bridgelets explicitly.
+This makes it possible to use a finer grid and time steps, or to reasonably
+cover sparser trajectories.
 A \emph{bridgelet} is the set of all walks between two given vertices of the
 grid in $T$ time steps.
 Krumm enumerates the walks explicitly to count the visits to the cells, which
 takes time exponential in $T$, making it impractical to use for $T > 12$.
-We show how to use dynamic programming to compute all the relevant statistics
-in $\mathcal{O}(T^3)$ time instead of $\mathcal{O}(5^T)$, making it feasible
-to compute the relevant statistics easily at least up to $T = 500$.
+Our dynamic programming approach computes all the relevant statistics in
+$\mathcal{O}(T^3)$ time instead of $\mathcal{O}(5^T)$, making it feasible to
+compute the relevant statistics easily at least up to $T = 500$.
 With sufficient parallelisation and optimisation, it is possible to make the
 approach even faster, as we only need $\mathcal{O}(T)$ time when computing on
 $\mathcal{O}(T^2)$ computing units in parallel.
@@ -196,7 +197,7 @@ The trajectories appear to exhibit reasonable levels of randomness, with
 
 \section{Closed-Form Expressions}
 We have shown the expression for the path count above; we show further details
-here.
+here (also includes a mathematical derivation for the visit probabilities).
 
 \begin{thebibliography}{9}
 \bibitem{krumm}
@@ -205,6 +206,5 @@ John Krumm.
 Maximum Entropy Bridgelets for Trajectory Completion.
 To appear in \textit{Proceedings of the 30th International Conference on
 Advances in Geographic Information Systems (ACM SIGSPATIAL 2022).}
-\url{https://www.dropbox.com/s/x2yliemk7xm1fus/paper_215.pdf?dl=0}
 \end{thebibliography}
 \end{document}

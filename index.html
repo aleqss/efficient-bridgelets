@@ -165,7 +165,9 @@
 <p class="author">Aleksandr Popov<br />
 <a href="https://github.com/aleqss/">@aleqss</a></p>
 </header>
-<p>Krumm <a href="#ref">[1]</a> has recently
+<p><i>This note accompanies the code available on
+<a href="https://github.com/aleqss/efficient-bridgelets">github</a>.</i></p>
+<p>Krumm <a href="#ref">[1]</a> has recently  
 introduced the concept of <em>bridgelets.</em> In his work, he aims to
 use a data-driven approach to interpolate trajectories between the
 measured locations. The main idea is to compute probabilities for
@@ -193,7 +195,9 @@ time (after
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="script"><mi>𝒪</mi></mstyle><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>T</mi><mn>3</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathcal{O}(T^3)</annotation></semantics></math>-time
 preprocessing) using the <a href="#dynamic-program">dynamic program</a>.</figcaption>
 </figure>
-<p>The dynamic program makes  computating with bridgelets more efficient, since it avoids computing the bridgelets explicitly. This makes it possible to use a finer grid and time steps, or to reasonably
+<p>The dynamic program makes computing with bridgelets more efficient, since it
+avoids constructing the bridgelets explicitly.
+This makes it possible to use a finer grid and time steps, or to reasonably
 cover sparser trajectories. A <em>bridgelet</em> is the set of all walks
 between two given vertices of the grid in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
