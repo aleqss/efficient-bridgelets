@@ -7,9 +7,8 @@ _If you wish to understand how the code works and learn more about what we can
 compute, check the
 [companion website](https://aleqss.github.io/efficient-bridgelets/)._
 
-![Five random trajectories from $(0, 0)$ to $(40, 20)$.](/../gh-pages/trajectories.svg
-"Illustration of a bridgelet: generated trajectories from $(0, 0)$ to $(40, 20)$
-in $400$ steps.")
+![Five random trajectories.](/../gh-pages/trajectories.svg "Illustration of a
+bridgelet: generated trajectories from $(0, 0)$ to $(40, 20)$ in $400$ steps.")
 
 # Capabilities
 With this code, given a time limit $T$ and a starting point $(a, b)$, we can:
@@ -32,9 +31,9 @@ from $(0, 0)$ to $(x, y)$ in $t$ steps that visit that cell.
 Dividing those counts by the sum of all values gives visit probabilities at the
 desired level of precision.
 Due to the symmetry, we only compute the tables for $0 < y \leq x \leq t$.
-The tables are
-[available](/aleqss/efficient-bridgelets/releases/latest/download/visits.zip)
-for the values of $t$ from $1$ to $100$. 
+The tables are available as text files split into several archives on the
+[releases page](/aleqss/efficient-bridgelets/releases/latest/) for a range of
+values of $t$.
 
 # Build requirements
 To run the code, you need a compiler set that supports C++17; make; cmake; GMP;
