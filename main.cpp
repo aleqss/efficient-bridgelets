@@ -129,6 +129,59 @@ int main() {
     using ms = std::chrono::milliseconds;
     using dp::operator""_loc;
 
+    bool visits;
+    do {
+        char answer;
+        std::cout << "Welcome! Do you want to run the exploration mode (e), or"
+            << " to compute the visit counts (v)? [e/v]\n> ";
+        std::cin >> answer;
+        if (!std::cin || (answer != 'e' && answer != 'v')) {
+            std::cout << "Please type e or v.\n";
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        else {
+            visits = (answer == 'v');
+            break;
+        }
+    } while (true);
+
+    if (visits) {
+        dp::Time ta, tb;
+        std::cin >> ta >> tb;
+        std::stringstream vname;
+        for (dp::Time t = ta; t < tb; ++t) {
+            std::cout << t << ' ' << std::flush;
+            auto tS = static_cast<dp::Loc>(t);
+            for (dp::Loc x = 0; x <= tS; ++x) {
+                auto bnd = tS - x < x ? tS - x : x;
+                for (dp::Loc y = 0; y <= bnd; ++y) {
+                    auto dp = prob::visit_all(t, {0_loc, 0_loc}, {x, y});
+                    vname << "data/visits/v_" << t << '_' << x << '_' << y;
+                    std::ofstream outi(vname.str());
+                    flat_write(dp, t, {0, 0}, outi);
+                    vname.str(std::string());
+                    vname.clear();
+                }
+            }
+        }
+        std::cout << '\n';
+        return 0;
+    }
+
+    std::cout << "Part 0: correctness checks\n\n";
+    auto shift = std::make_pair<>(1_loc, 2_loc);
+    dp::Time T0 = 8;
+    dp::DP a(T0, dp::uniform_prop, shift);
+    dp::DP b(T0, dp::uniform_prop, shift, {}, true);
+    auto tbl = xpl::compute_paths(T0, shift);
+    std::cout << "sparse: " << check_paths(T0, a, tbl, shift) << ", dense: "
+        << check_paths(T0, b, tbl, shift) << "\n";
+    std::ofstream out00("data/paths_dp_wrong");
+    dp_write(a, T0, shift, out00);
+    std::ofstream out01("data/paths_dp_correct");
+    dp_write(b, T0, shift, out01);
+
     std::cout << "Part 1: timing\nWe run both the DP and the naive version, "
         << "comparing the time to compute all\npaths and to compute the paths "
         << "that visit a location.\n\n";
@@ -156,7 +209,7 @@ int main() {
 
     std::cout << "Computing the DP for visits... " << std::flush;
     auto [r2, t2] = time_and_save(prob::visit_all, T1,
-        std::make_pair<>(0_loc, 0_loc), std::make_pair<>(40_loc, 20_loc));
+        std::make_pair<>(0_loc, 0_loc), std::make_pair<>(2_loc, 1_loc));
     std::cout << "done.\n" << std::endl;
     std::ofstream out2("data/visits_dp");
     flat_write(r2, T1, {0, 0}, out2);
@@ -183,7 +236,7 @@ int main() {
 
     std::cout << "Computing visits explicitly... " << std::flush;
     auto [r4, t4] = time_and_save(xpl::visits, T2,
-        std::make_pair<>(0_loc, 0_loc), std::make_pair<>(1_loc, 1_loc));
+        std::make_pair<>(0_loc, 0_loc), std::make_pair<>(2_loc, 1_loc));
     std::cout << "done.\n" << std::endl;
 
     if (T2 <= T1) {

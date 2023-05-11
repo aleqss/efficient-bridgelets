@@ -28,5 +28,4 @@ namespace dp {
     Loc operator"" _loc(unsigned long long l) {
         return static_cast<Loc>(l);
     }
-
 }

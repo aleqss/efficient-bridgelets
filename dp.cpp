@@ -1,4 +1,4 @@
-/* Copyright 2022 Aleksandr Popov
+/* Copyright 2022, 2023 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -17,6 +17,12 @@
 #include <limits>
 #include <stdexcept>
 
+namespace {
+    inline dp::Loc absv(dp::Loc const& val) {
+        return val < 0 ? -val : val;
+    }
+}
+
 namespace dp {
     Blocked::Blocked(Loc x, Loc y, Time s): i{std::move(x)}, j{std::move(y)},
             start{std::move(s)} {
@@ -28,18 +34,54 @@ namespace dp {
     }
 
     bool DP::test_index(Loc const& i, Loc const& j, Time const& t) const {
-        auto ts = static_cast<Loc>(T);
-        auto [si, sj] = shift;
-        Blocked test(i, j, 0);
-        auto loc = blocked.find(test);
+        return dense ? test_index_dn(i, j, t) : test_index_sp(i, j, t);
+    }
+
+    bool DP::test_index_sp(Loc const& i, Loc const& j, Time const& t) const {
+        if (t > T)
+            return false;
+        auto [shi, shj] = shift;
+        auto loc = blocked.find({i, j, 0});
         auto tf = flip ? T - t : t;
-        Loc is = f * (i - si) + ts, js = f * (j - sj) + ts;
+        auto tfs = static_cast<Loc>(tf);
+        auto is = absv(i - shi), js = absv(j - shj);
+        return is + js <= tfs && (loc == blocked.end() || tf < loc->start);
+    }
+
+    bool DP::test_index_dn(Loc const& i, Loc const& j, Time const& t) const {
+        auto Ts = static_cast<Loc>(T);
+        auto [shi, shj] = shift;
+        auto loc = blocked.find({i, j, 0});
+        auto tf = flip ? T - t : t;
+        Loc is = f * (i - shi) + Ts, js = f * (j - shj) + Ts;
         return t <= T && is >= 0 && js >= 0
             && static_cast<Time>(is) <= 2 * T && static_cast<Time>(js) <= 2 * T
             && (loc == blocked.end() || tf < loc->start);
     }
 
     std::size_t DP::index(Loc const& i, Loc const& j, Time const& t) const {
+        return dense ? index_dn(i, j, t) : index_sp(i, j, t);
+    }
+
+    std::size_t DP::index_sp(Loc const& i, Loc const& j, Time const& t) const {
+        assert(t <= T);
+        auto [shi, shj] = shift;
+        auto tf = flip ? T - t : t;
+        Loc is = f * (i - shi), js = f * (j - shj);
+        // 1. start index of t-th layer.
+        std::size_t ret = (tf - 1) * tf * (2 * tf - 1) / 3 + tf * tf;
+        // 2. centre of i-th row.
+        auto rit = tf - static_cast<std::size_t>(absv(is));
+        if (is <= 0)
+            ret += rit * (rit + 1);
+        else
+            ret += 2 * tf * (tf + 1) - rit * (rit + 1);
+        // 3. j-th position w.r.t. the centre.
+        auto absjs = static_cast<std::size_t>(absv(js));
+        return js < 0 ? ret - absjs : ret + absjs;
+    }
+
+    std::size_t DP::index_dn(Loc const& i, Loc const& j, Time const& t) const {
         assert(t <= T);
         auto ts = static_cast<Loc>(T);
         auto [si, sj] = shift;
@@ -67,8 +109,8 @@ namespace dp {
 
     DP::DP(Time max_time, std::function<Cnt(DP const&, Loc const&, Loc const&,
             Time const&)> propagate, std::pair<Loc, Loc> origin,
-            std::unordered_set<Blocked> const& blocked_cells):
-            T{std::move(max_time)}, table((T + 1) * (2 * T + 1) * (2 * T + 1)) {
+            std::unordered_set<Blocked> const& blocked_cells, bool dense_st):
+            T{std::move(max_time)}, dense{dense_st} {
         if (T > std::numeric_limits<Loc>::max())
             throw std::length_error("Please pick a lower value of T.");
 
@@ -76,21 +118,42 @@ namespace dp {
         for (auto const& cell: blocked_cells)
             blocked.emplace(cell.i - is, cell.j - js, cell.start);
 
-        Loc Ts = static_cast<Loc>(T);
-        for (Loc i = -Ts; i <= Ts; ++i) {
-            for (Loc j = -Ts; j <= Ts; ++j) {
-                auto loc = blocked.find(Blocked(i, j, 0));
-                if (loc == blocked.end() || loc->start > 0)
-                    at(i, j, 0) = (i == 0 && j == 0) ? 1 : 0;
-            }
-        }
-
-        for (Time t = 0; t < T; ++t) {
+        if (dense_st) {
+            table = std::vector<Cnt>((T + 1) * (2 * T + 1) * (2 * T + 1));
+            Loc Ts = static_cast<Loc>(T);
             for (Loc i = -Ts; i <= Ts; ++i) {
                 for (Loc j = -Ts; j <= Ts; ++j) {
-                    auto loc = blocked.find(Blocked(i, j, 0));
-                    if (loc == blocked.end() || t + 1 < loc->start)
-                        at(i, j, t + 1) = propagate(*this, i, j, t);
+                    auto loc = blocked.find({i, j, 0});
+                    if (loc == blocked.end() || loc->start > 0)
+                        at(i, j, 0) = (i == 0 && j == 0) ? 1 : 0;
+                }
+            }
+
+            for (Time t = 0; t < T; ++t) {
+                for (Loc i = -Ts; i <= Ts; ++i) {
+                    for (Loc j = -Ts; j <= Ts; ++j) {
+                        auto loc = blocked.find({i, j, 0});
+                        if (loc == blocked.end() || t + 1 < loc->start)
+                            at(i, j, t + 1) = propagate(*this, i, j, t);
+                    }
+                }
+            }
+        }
+        else {
+            table = std::vector<Cnt>(T * (T + 1) * (2 * T + 1) / 3
+                + (T + 1) * (T + 1));
+            auto loc = blocked.find({0, 0, 0});
+            if (loc == blocked.end() || loc->start > 0)
+                at(0, 0, 0) = 1;
+
+            for (Time t = 1; t <= T; ++t) {
+                auto ts = static_cast<Loc>(t);
+                for (Loc i = -ts; i <= ts; ++i) {
+                    for (Loc j = absv(i) - ts; j <= ts - absv(i); ++j) {
+                        loc = blocked.find({i, j, 0});
+                        if (loc == blocked.end() || t + 1 < loc->start)
+                            at(i, j, t) = propagate(*this, i, j, t - 1);
+                    }
                 }
             }
         }
@@ -123,12 +186,22 @@ namespace dp {
         DP res(*this);
         res.blocked.clear();
         auto const* r = this;
-        Loc Ts = static_cast<Loc>(T);
         auto [xs, ys] = shift;
-        for (Time t = 0; t <= T; ++t)
-            for (Loc i = xs - Ts; i <= xs + Ts; ++i)
-                for (Loc j = ys - Ts; j <= ys + Ts; ++j)
-                    res.at(i, j, t) = r->at(i, j, t) * other.at(i, j, t);
+        if (dense) {
+            Loc Ts = static_cast<Loc>(T);
+            for (Time t = 0; t <= T; ++t)
+                for (Loc i = xs - Ts; i <= xs + Ts; ++i)
+                    for (Loc j = ys - Ts; j <= ys + Ts; ++j)
+                        res.at(i, j, t) = r->at(i, j, t) * other.at(i, j, t);
+        }
+        else {
+            for (Time t = 0; t <= T; ++t) {
+                auto ts = static_cast<Loc>(t);
+                for (Loc i = xs - ts; i <= xs + ts; ++i)
+                    for (Loc j = ys - ts + absv(i); j <= ys + ts - absv(i); ++j)
+                        res.at(i, j, t) = r->at(i, j, t) * other.at(i, j, t);
+            }
+        }
         res.blocked = blocked;
         return res;
     }
@@ -138,13 +211,22 @@ namespace dp {
         std::unordered_map<std::pair<Loc, Loc>, Cnt, LocHash> res;
         auto const* r = this;
         auto [is, js] = shift;
-        auto tmax = max_time < T ? max_time : T;
-        auto ts = static_cast<Loc>(tmax);
-        for (Loc i = is - ts; i <= is + ts; ++i)
-            for (Loc j = js - ts; j <= js + ts; ++j)
-                for (Time t = 0; t <= tmax; ++t)
-                    if (r->at(i, j, t) > 0)
-                        res[{i, j}] += r->at(i, j, t);
+        auto Tmax = max_time < T ? max_time : T;
+        auto Ts = static_cast<Loc>(Tmax);
+        if (dense) {
+            for (Loc i = is - Ts; i <= is + Ts; ++i)
+                for (Loc j = js - Ts; j <= js + Ts; ++j)
+                    for (Time t = 0; t <= Tmax; ++t)
+                        if (r->at(i, j, t) > 0)
+                            res[{i, j}] += r->at(i, j, t);
+        }
+        else {
+            for (Loc i = is - Ts; i <= is + Ts; ++i)
+                for (Loc j = js - Ts + absv(i); j <= js + Ts - absv(i); ++j)
+                    for (Time t = 0; t <= Tmax; ++t)
+                        if (r->at(i, j, t) > 0)
+                            res[{i, j}] += r->at(i, j, t);
+        }
         return res;
     }
 

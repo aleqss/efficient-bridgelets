@@ -1,4 +1,4 @@
-/* Copyright 2022 Aleksandr Popov
+/* Copyright 2022, 2023 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -76,25 +76,86 @@ namespace dp {
         Loc f{1};
         /// The shift, i.e. starting position instead of (0, 0).
         std::pair<Loc, Loc> shift{0, 0};
+        /// Whether the DP is stored in dense or sparse form.
+        bool dense{false};
 
         /**
-         * @brief Test if an index is within bounds, with shift and time flip.
+         * @brief Test if an index is within bounds, with shift and time flip,
+         * handling both sparse and dense storage.
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return True iff -T <= i, j <= T and 0 <= t <= T, after shift, and
-         * the cell is not blocked at this time.
+         * @return True iff index is explicitly stored in the table, and the
+         * cell is not blocked at this time.
          */
         bool test_index(Loc const& i, Loc const& j, Time const& t) const;
 
         /**
-         * @brief Compute the index within the table, with shift and time flip.
+         * @brief Test if an index is within bounds, with shift and time flip,
+         * for sparse storage.
+         * @param i First dimension.
+         * @param j Second dimension.
+         * @param t Current time.
+         * @return True iff t <= T, |i| + |j| <= t, after shift, and the cell
+         * is not blocked at this time.
+         */
+        bool test_index_sp(Loc const& i, Loc const& j, Time const& t) const;
+
+        /**
+         * @brief Test if an index is within bounds, with shift and time flip,
+         * for dense storage.
+         * @param i First dimension.
+         * @param j Second dimension.
+         * @param t Current time.
+         * @return True iff t <= T, -T <= i, j <= T, after shift, and the cell
+         * is not blocked at this time.
+         */
+        bool test_index_dn(Loc const& i, Loc const& j, Time const& t) const;
+
+        /**
+         * @brief Compute the index within the table, with shift and time flip,
+         * handling both sparse and dense storage.
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
          * @return The index in table that maps to (i, j, t).
          */
         std::size_t index(Loc const& i, Loc const& j, Time const& t) const;
+
+        /**
+         * @brief Compute the index within the table, with shift and time flip,
+         * for sparse storage.
+         *
+         * We only store entries that may be non-zero. In each time slice, we
+         * only store the non-empty diamond, depending on t.
+         * In layer t, there are 1 + 2t(t + 1) entries. The index of the layer
+         * t can be computed as the sum of the element count in the previous
+         * layers, yielding t^2 + (t - 1)t(2t - 1)/3.
+         * To find the index within a layer, let x = t - |i|.
+         * For i <= 0, index of row i is x^2; centre of row i is x(x + 1).
+         * For i > 0, the last index in the layer is 2t(t + 1); count backwards
+         * from it to get centre of row i at 2t(t + 1) - x(x + 1).
+         * Within the row, shift by j to get the final index.
+         * @param i First dimension.
+         * @param j Second dimension.
+         * @param t Current time.
+         * @return The index in table that maps to (i, j, t).
+         */
+        std::size_t index_sp(Loc const& i, Loc const& j, Time const& t) const;
+
+        /**
+         * @brief Compute the index within the table, with shift and time flip,
+         * for dense storage.
+         *
+         * We store the entire hyperrectangle with dimensions
+         * (T + 1) * (2T + 1)^2. The indexing is standard:
+         * t * (2T + 1)^2 + i * (2T + 1) + j.
+         * @param i First dimension.
+         * @param j Second dimension.
+         * @param t Current time.
+         * @return The index in table that maps to (i, j, t).
+         */
+        std::size_t index_dn(Loc const& i, Loc const& j, Time const& t) const;
 
     public:
         /**
@@ -103,11 +164,13 @@ namespace dp {
          * @param max_time The value of T (allowed number of steps).
          * @param propagate The propagation function, see e.g. uniform_prop.
          * @param blocked_cells The set of blocked cells.
+         * @param dense_st Whether to use the dense storage representation.
          */
         DP(Time max_time,
             std::function<Cnt(DP const&, Loc const&, Loc const&, Time const&)>
             propagate, std::pair<Loc, Loc> origin = {0, 0},
-            std::unordered_set<Blocked> const& blocked_cells = {});
+            std::unordered_set<Blocked> const& blocked_cells = {},
+            bool dense_st = false);
 
         /**
          * @brief Return the value P(i, j, t) in the DP, with 0 for unreachable
@@ -149,7 +212,8 @@ namespace dp {
         /**
          * @brief Combine two DPs by multiplying matching entries.
          * @param other The second DP, with the same `T` and opposite `flip`.
-         * @return The multiplied DP, with the new shift, and no flip.
+         * @return The multiplied DP, with the new shift, and no flip. It is
+         * dense if and only if this DP is dense.
          */
         DP operator*(DP const& other) const;
 
