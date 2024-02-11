@@ -7,3 +7,9 @@ data/*
 !data/.placeholder
 figs/*
 !figs/.placeholder
+*.sublime-*
+compile_commands.json
+*.tar.xz
+movement/*
+!movement/get_data.py
+
