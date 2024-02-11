@@ -1,0 +1,91 @@
+/* Copyright 2023, 2024 Aleksandr Popov
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version. This program is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+ * Public License for more details. You should have received a copy of the GNU
+ * General Public License along with this program. If not, see
+ * <https://www.gnu.org/licenses/>.
+ */
+
+#include "io.hpp"
+
+#include <ios>
+#include <istream>
+#include <limits>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include "dp.hpp"
+
+namespace io {
+    void dp_write(dp::DP const& table, Time const& T, Cell const& shift,
+            std::ostream& outf) {
+        auto [is, js] = shift;
+        auto sT = static_cast<Loc>(T);
+        outf << T << '\n';
+        for (Loc i = is - sT; i <= is + sT; ++i)
+            for (Loc j = js - sT; j <= js + sT; ++j)
+                outf << table.at(i, j, T) << (j < js + sT ? ' ' : '\n');
+        outf.flush();
+    }
+
+    void flat_write(dp::DP const& table, Time const& T, Cell const& shift,
+            std::ostream& outf) {
+        auto fl_table = table.flatten(T);
+        auto [is, js] = shift;
+        auto sT = static_cast<Loc>(T);
+        outf << T << '\n';
+        for (Loc i = is - sT; i <= is + sT; ++i)
+            for (Loc j = js - sT; j <= js + sT; ++j)
+                outf << fl_table[{i, j}] << (j < js + sT ? ' ' : '\n');
+    }
+
+    void traj_write(std::vector<Cell> const& traj, std::ostream& outf) {
+        for (auto const& [i, j]: traj)
+            outf << i << ' ' << j << '\n';
+    }
+
+    Traj read_traj(std::istream& inf) {
+        for (auto i = 0u; i < 3u; ++i)
+            inf.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        std::string infline;
+        std::istringstream lproc;
+        Time t;
+        Loc x, y;
+        Traj result;
+        char comma;
+
+        while (std::getline(inf, infline)) {
+            lproc.str(std::move(infline));
+            lproc >> t >> comma >> x >> comma >> y;
+            result.emplace_back(t, x, y);
+        }
+        return result;
+    }
+}
+
+
+/*
+std::array cnts{803456, 485103, 336692, 295115};
+std::stringstream fname;
+
+for (auto mode = 1; mode <= 4; ++mode) {
+    for (auto tri = 0; tri < cnts[mode - 1]; ++tri) {
+        fname << "movement/" << mode << "/" << tri;
+        std::ifstream intraj(fname.str());
+        io::read_traj(intraj);
+
+        flat_write(dp, t, {0, 0}, outi);
+        fname.str(std::string());
+        fname.clear();
+    }
+}
+
+
+std::unordered_map<std::tuple<std::pair<Loc, Loc>, std::pair<Loc, Loc>, Time>, std::list<std::tuple<std::uint32_t, std::size_t, std::size_t>>>
+*/

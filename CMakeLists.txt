@@ -1,4 +1,4 @@
-# Copyright 2022 Aleksandr Popov
+# Copyright 2022, 2024 Aleksandr Popov
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later
@@ -17,6 +17,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # CMake sets -g by default for Debug build
 set(DEBUG_OPTIONS "-Og")
 set(RELEASE_OPTIONS "-O3")
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(ASAN "Use address sanitizer" Off)
 option(UBSAN "Use UB sanitizer" Off)
@@ -45,15 +47,16 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(gmpxx REQUIRED)
 
 # Main executable
-add_executable(randomwalks main.cpp defs.cpp dp.cpp explicit.cpp problems.cpp)
+add_executable(randomwalks main.cpp bridge.cpp defs.cpp dp.cpp explicit.cpp
+    io.cpp map.cpp problems.cpp)
 
 set(GNU_OPTIONS
     "-pedantic" "-Wall" "-Wextra" "-Wcast-align" "-Wcast-qual" "-Wlogical-op"
     "-Wctor-dtor-privacy" "-Wdisabled-optimization" "-Wformat=2" "-Winit-self"
     "-Wmissing-declarations" "-Wshadow" "-Wmissing-include-dirs" "-Wnoexcept"
-    "-Wold-style-cast" "-Woverloaded-virtual" "-Wredundant-decls" "-Wsign-promo"
-    "-Wsign-conversion" "-Wstrict-null-sentinel" "-Wstrict-overflow=2" "-Wundef"
-    "-Wswitch-default")
+    "-Wold-style-cast" "-Woverloaded-virtual" "-Wredundant-decls" "-Wundef"
+    "-Wsign-conversion" "-Wstrict-null-sentinel" "-Wstrict-overflow=2"
+    "-Wsign-promo" "-Wswitch-default")
 
 set(CLANG_OPTIONS
     "-Weverything" "-Wno-c++98-compat" "-Wno-covered-switch-default"
