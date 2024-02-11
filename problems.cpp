@@ -13,16 +13,16 @@
 #include "problems.hpp"
 
 #include <random>
+#include <utility>
 
 namespace prob {
-    using ::dp::DP, ::dp::Time, ::dp::Loc, ::dp::Cnt, ::dp::Blocked;
-    DP all_paths(Time T, std::pair<Loc, Loc> start,
+    DP all_paths(Time T, Cell start,
             std::unordered_set<Blocked> const& blocked) {
         DP res(std::move(T), dp::uniform_prop, std::move(start), blocked);
         return res;
     }
 
-    DP visit_all(Time T, std::pair<Loc, Loc> start, std::pair<Loc, Loc> end) {
+    DP visit_all(Time T, Cell start, Cell end) {
         DP first_visit(T, dp::uniform_prop, {0, 0}, {{0, 0, 1}});
         first_visit.set_shift(std::move(start));
         first_visit.flip_coords();
@@ -32,13 +32,13 @@ namespace prob {
         return first_visit * rest;
     }
 
-    std::vector<std::pair<Loc, Loc>> generate_path(Time const& T,
-            DP const& paths, std::pair<Loc, Loc> const& end) {
+    std::vector<Cell> generate_path(Time const& T, DP const& paths,
+            Cell const& end) {
         auto [ci, cj] = end;
         if (paths.at(ci, cj, T) == 0)
             return {};
 
-        std::vector<std::pair<Loc, Loc>> ret(T + 1);
+        std::vector<Cell> ret(T + 1);
         std::random_device rd;
         std::mt19937_64 helper(rd());
         std::uniform_int_distribution<unsigned int> seeder;

@@ -14,11 +14,12 @@
 #define PROBLEMS_H
 
 #include <unordered_set>
-#include <utility>
 #include <vector>
+#include "defs.hpp"
 #include "dp.hpp"
 
 namespace prob {
+    using ::dp::DP, ::dp::Blocked, ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::Cnt;
     /**
      * @brief For all possible coordinates (x, y) and for all time steps
      * 0 <= t <= T, count the paths from start to (x, y) in t steps.
@@ -27,8 +28,8 @@ namespace prob {
      * @param blocked The set of blocked cells, none by default.
      * @return An instance of `DP` with the counts, accessible with at(x, y, t).
      */
-    dp::DP all_paths(dp::Time T, std::pair<dp::Loc, dp::Loc> start,
-        std::unordered_set<dp::Blocked> const& blocked = {});
+    DP all_paths(Time T, Cell start,
+        std::unordered_set<Blocked> const& blocked = {});
 
     /**
      * @brief For all possible coordinates (a, b) and for all time steps
@@ -41,8 +42,7 @@ namespace prob {
      * @param end The final point of the paths.
      * @return An instance of `DP` with the counts, accessible with at(x, y, t).
      */
-    dp::DP visit_all(dp::Time T, std::pair<dp::Loc, dp::Loc> start,
-        std::pair<dp::Loc, dp::Loc> end);
+    DP visit_all(Time T, Cell start, Cell end);
 
     /**
      * @brief Generate a path from `start` to `end` according to the
@@ -60,7 +60,7 @@ namespace prob {
      * the kth item is the (i, j)-coordinate at time k; or an empty trajectory
      * if the path is impossible.
      */
-    std::vector<std::pair<dp::Loc, dp::Loc>> generate_path(dp::Time const& T,
-        dp::DP const& paths, std::pair<dp::Loc, dp::Loc> const& end);
+    std::vector<Cell> generate_path(Time const& T, DP const& paths,
+        Cell const& end);
 }
 #endif

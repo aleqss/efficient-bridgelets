@@ -108,7 +108,7 @@ namespace dp {
     }
 
     DP::DP(Time max_time, std::function<Cnt(DP const&, Loc const&, Loc const&,
-            Time const&)> propagate, std::pair<Loc, Loc> origin,
+            Time const&)> propagate, Cell origin,
             std::unordered_set<Blocked> const& blocked_cells, bool dense_st):
             T{std::move(max_time)}, dense{dense_st} {
         if (T > std::numeric_limits<Loc>::max())
@@ -169,7 +169,7 @@ namespace dp {
         f *= -1;
     }
 
-    void DP::set_shift(std::pair<Loc, Loc> origin) {
+    void DP::set_shift(Cell origin) {
         auto [i, j] = origin;
         auto l = std::numeric_limits<Loc>::min() + static_cast<Loc>(T);
         auto u = std::numeric_limits<Loc>::max() - static_cast<Loc>(T);
@@ -206,9 +206,8 @@ namespace dp {
         return res;
     }
 
-    std::unordered_map<std::pair<Loc, Loc>, Cnt, LocHash> DP::flatten(Time
-            const& max_time) const {
-        std::unordered_map<std::pair<Loc, Loc>, Cnt, LocHash> res;
+    Visits DP::flatten(Time const& max_time) const {
+        Visits res;
         auto const* r = this;
         auto [is, js] = shift;
         auto Tmax = max_time < T ? max_time : T;

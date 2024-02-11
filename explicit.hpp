@@ -1,4 +1,4 @@
-/* Copyright 2022 Aleksandr Popov
+/* Copyright 2022, 2024 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -20,9 +20,9 @@
 #include "defs.hpp"
 
 namespace xpl {
-    using ::dp::Cnt, ::dp::Loc, ::dp::Time, ::dp::LocHash;
-    using Table = std::unordered_map<std::pair<Loc, Loc>, Cnt, LocHash>;
-    using PList = std::unordered_set<std::pair<Loc, Loc>, LocHash>;
+    using ::dp::Cnt, ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::LocHash;
+    using Table = std::unordered_map<Cell, Cnt, LocHash>;
+    using PList = std::unordered_set<Cell, LocHash>;
 
     /**
      * @brief For all possible coordinates (x, y), count the paths from shift to
@@ -35,7 +35,7 @@ namespace xpl {
      * @return An instance of `Table` with the counts, each associated with a
      * location (x, y).
      */
-    Table compute_paths(Time const& T, std::pair<Loc, Loc> const& shift);
+    Table compute_paths(Time const& T, Cell const& shift);
 
     /**
      * @brief For all possible coordinates (x, y), count the paths from shift to
@@ -48,7 +48,6 @@ namespace xpl {
      * @return An instance of `Table` with the counts, each associated with a
      * location (x, y).
      */
-    Table visits(Time const& T, std::pair<Loc, Loc> const& shift,
-        std::pair<Loc, Loc> const& end);
+    Table visits(Time const& T, Cell const& shift, Cell const& end);
 }
 #endif

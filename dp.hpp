@@ -14,7 +14,6 @@
 #define DP_H
 
 #include <functional>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -75,7 +74,7 @@ namespace dp {
         /// The factor in computing locations, -1 or 1, to flip directions.
         Loc f{1};
         /// The shift, i.e. starting position instead of (0, 0).
-        std::pair<Loc, Loc> shift{0, 0};
+        Cell shift{0, 0};
         /// Whether the DP is stored in dense or sparse form.
         bool dense{false};
 
@@ -168,7 +167,7 @@ namespace dp {
          */
         DP(Time max_time,
             std::function<Cnt(DP const&, Loc const&, Loc const&, Time const&)>
-            propagate, std::pair<Loc, Loc> origin = {0, 0},
+            propagate, Cell origin = {0, 0},
             std::unordered_set<Blocked> const& blocked_cells = {},
             bool dense_st = false);
 
@@ -207,7 +206,7 @@ namespace dp {
          * @brief Shift the origin from (0, 0) or other current one to `origin`.
          * @param origin The new origin.
          */
-        void set_shift(std::pair<Loc, Loc> origin);
+        void set_shift(Cell origin);
 
         /**
          * @brief Combine two DPs by multiplying matching entries.
@@ -223,8 +222,7 @@ namespace dp {
          * some up over the entire DP.
          * @return A mapping from points (i, j) to the sum from DP over all t.
          */
-        std::unordered_map<std::pair<Loc, Loc>, Cnt, LocHash> flatten(Time
-            const& max_time) const;
+        Visits flatten(Time const& max_time) const;
     };
 
     /**

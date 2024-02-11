@@ -1,4 +1,4 @@
-/* Copyright 2022 Aleksandr Popov
+/* Copyright 2022, 2024 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -13,8 +13,8 @@
 #include "explicit.hpp"
 
 namespace {
-    using ::xpl::Loc, ::xpl::PList, ::xpl::Cnt, ::xpl::Time;
-    std::pair<Loc, Loc> decode(Cnt move, PList& res) {
+    using ::xpl::Cnt, ::xpl::Loc, ::xpl::Time, ::dp::Cell, ::xpl::PList;
+    Cell decode(Cnt move, PList& res) {
         res.clear();
         Loc x = 0, y = 0;
         res.emplace(x, y);
@@ -44,8 +44,8 @@ namespace {
 }
 
 namespace xpl {
-    Table compute_paths(Time const& T, std::pair<Loc, Loc> const& shift) {
-        std::unordered_map<std::pair<Loc, Loc>, Cnt, dp::LocHash> table;
+    Table compute_paths(Time const& T, Cell const& shift) {
+        std::unordered_map<Cell, Cnt, LocHash> table;
         auto max_cnt = max_num(T);
         auto [is, js] = shift;
         PList visited;
@@ -56,8 +56,7 @@ namespace xpl {
         return table;
     }
 
-    Table visits(Time const& T, std::pair<Loc, Loc> const& shift,
-            std::pair<Loc, Loc> const& end) {
+    Table visits(Time const& T, Cell const& shift, Cell const& end) {
         Table table;
         auto max_cnt = max_num(T);
         auto [is, js] = shift;
