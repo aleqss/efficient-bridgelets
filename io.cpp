@@ -12,6 +12,7 @@
 
 #include "io.hpp"
 
+#include <cassert>
 #include <ios>
 #include <istream>
 #include <limits>
@@ -67,25 +68,24 @@ namespace io {
         }
         return result;
     }
-}
 
+    Traj sparsify(Traj const& dense, Time const& skip) {
+        assert(dense.size() >= 2);
+        Traj ret;
+        ret.push_back(dense.front());
+        for (auto const& m: dense)
+            if (std::get<0>(m) - std::get<0>(ret.back()) >= skip)
+                ret.push_back(m);
+        if (ret.back() != dense.back())
+            ret.push_back(dense.back());
+        return ret;
+    }
 
-/*
-std::array cnts{803456, 485103, 336692, 295115};
-std::stringstream fname;
-
-for (auto mode = 1; mode <= 4; ++mode) {
-    for (auto tri = 0; tri < cnts[mode - 1]; ++tri) {
-        fname << "movement/" << mode << "/" << tri;
-        std::ifstream intraj(fname.str());
-        io::read_traj(intraj);
-
-        flat_write(dp, t, {0, 0}, outi);
-        fname.str(std::string());
-        fname.clear();
+    std::vector<std::uint32_t> read_flist(std::istream& inf) {
+        std::vector<std::uint32_t> ret;
+        std::uint32_t tmp;
+        while (inf >> tmp)
+            ret.push_back(std::move(tmp));
+        return ret;
     }
 }
-
-
-std::unordered_map<std::tuple<std::pair<Loc, Loc>, std::pair<Loc, Loc>, Time>, std::list<std::tuple<std::uint32_t, std::size_t, std::size_t>>>
-*/

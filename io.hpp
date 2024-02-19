@@ -60,26 +60,22 @@ namespace io {
      * @return The sequence of (t, x, y) tuples.
      */
     Traj read_traj(std::istream& inf);
+
+    /**
+     * @brief Make a trajectory sparse by omitting measurements closer than
+     * `skip` units in time.
+     * @param dense The original trajectory.
+     * @param skip The number of time steps within which we wish to not have
+     * any measurements.
+     * @return The sparser trajectory.
+     */
+    Traj sparsify(Traj const& dense, Time const& skip = 5u);
+
+    /**
+     * @brief Read a list of trajectory identifiers.
+     * @param inf The input stream.
+     * @return The resulting list of trajectory IDs.
+     */
+    std::vector<std::uint32_t> read_flist(std::istream& inf);
 }
 #endif
-
-
-/*
-std::array cnts{803456, 485103, 336692, 295115};
-std::stringstream fname;
-
-for (auto mode = 1; mode <= 4; ++mode) {
-    for (auto tri = 0; tri < cnts[mode - 1]; ++tri) {
-        fname << "movement/" << mode << "/" << tri;
-        std::ifstream intraj(fname.str());
-        io::read_traj(intraj);
-
-        flat_write(dp, t, {0, 0}, outi);
-        fname.str(std::string());
-        fname.clear();
-    }
-}
-
-
-std::unordered_map<std::tuple<std::pair<Loc, Loc>, std::pair<Loc, Loc>, Time>, std::list<std::tuple<std::uint32_t, std::size_t, std::size_t>>>
-*/

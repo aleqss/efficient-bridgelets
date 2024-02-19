@@ -16,12 +16,43 @@
 #include <cstddef>
 #include <cstdint>
 #include <forward_list>
+#include <functional>
 #include <iosfwd>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 #include "defs.hpp"
+
+namespace map {
+    /// Weighted edge.
+    struct Edge {
+        /// An adjacent vertex index.
+        std::size_t v;
+        /// The weight of the edge.
+        int weight;
+    };
+
+    /// Compare edges for equality ignoring the weight.
+    struct EdgeEqualV {
+        constexpr bool operator()(Edge const& a, Edge const& b) const;
+    };
+
+    /// Compare edges based on their weight.
+    template <template <typename T> class Cmp = std::less>
+    struct EdgeOrderW {
+        constexpr bool operator()(Edge const& a, Edge const& b) const {
+            return Cmp<int>()(a.weight, b.weight);
+        }
+    };
+}
+
+// Specialise std::hash to map::Edge for use in unordered_set.
+template<> struct std::hash<::map::Edge> {
+    std::size_t operator()(::map::Edge const& e) const noexcept {
+        return std::hash<std::size_t>{}(e.v);
+    }
+};
 
 namespace map {
     // Forward declare, we use it in the shortcut graph.
@@ -34,13 +65,45 @@ namespace map {
      */
     class ShortcutGraph {
     public:
-        using Vertex = map::Meas;
+        using Vertex = ::map::Meas;
 
     private:
         /// The vertices of the graph are the vertices of a trajectory.
         std::vector<Vertex> const& vs;
-        /// Directed adjacency list.
-        std::vector<std::unordered_set<std::size_t>> adj;
+        /// Directed adjacency list with edge weights.
+        std::vector<std::unordered_set<Edge, std::hash<Edge>, EdgeEqualV>> adj;
+        /// Whether we have added single hops.
+        bool added_hops = false;
+
+        /**
+         * @brief Return the unweighted shortest path from the start to the end
+         * of a trajectory in the shortcut graph, if one exists.
+         *
+         * This function uses BFS from the start vertex; the goal is to find
+         * the maximal subtrajectories that cover the entire trajectory. If the
+         * hops were added that are only covered with bridgelets, you should
+         * use the weighted version instead.
+         * @param ret The shortest sequence of vertices *in reverse order*.
+         * These are indices into `tr` that the graph was constructed with.
+         * @return Whether a path from start to end exists; should always
+         * return `true` if `add_single_hops()` has been called.
+         */
+        bool sp_unweighted(std::vector<std::size_t>& ret);
+
+        /**
+         * @brief Return the weighted shortest path from the start to the end
+         * of a trajectory in the shortcut graph, if one exists.
+         *
+         * This function uses Dijkstra's algorithm from the start vertex; the
+         * goal is to find the minimal-weight path with fewest hops. If the
+         * single hops have been added, we allow the parts for which we have no
+         * data to be filled in using bridgelets, they contribute to weight.
+         * @param ret The shortest sequence of vertices *in reverse order*.
+         * These are indices into `tr` that the graph was constructed with.
+         * @return Whether a path from start to end exists; should always
+         * return `true` if `add_single_hops()` has been called.
+         */
+        bool sp_weighted(std::vector<std::size_t>& ret);
 
     public:
         /**
@@ -50,7 +113,7 @@ namespace map {
          * @param tr The trajectory to build the graph for.
          * @param map The map to check which edges are valid.
          */
-        ShortcutGraph(std::vector<Vertex> const& tr, map::Map const& map);
+        ShortcutGraph(std::vector<Vertex> const& tr, ::map::Map const& map);
 
         /**
          * @brief Add all edges from vertex index `i` to `i + 1` in the graph,
@@ -61,11 +124,12 @@ namespace map {
         /**
          * @brief Return the shortest path from the start to the end of a
          * trajectory in the shortcut graph, if one exists.
-         * 
-         * This function uses BFS from the start vertex; the goal is to find
-         * the maximal subtrajectories that cover the entire trajectory. If the
-         * single hops have been added, we allow the parts for which we have no
-         * data to be filled in using bridgelets.
+         *
+         * This function uses either BFS or Dijkstra's algorithm from the start
+         * vertex; the goal is to find the maximal subtrajectories that cover
+         * the entire trajectory. If the single hops have been added, we allow
+         * the parts for which we have no data to be filled in using bridgelets
+         * and minimise their occurrence.
          * @param ret The shortest sequence of vertices *in reverse order*.
          * These are indices into `tr` that the graph was constructed with.
          * @return Whether a path from start to end exists; should always
@@ -132,7 +196,7 @@ namespace map {
 
         /**
          * @brief Compute the prediction for `tr`.
-         * 
+         *
          * If `intermediate` is false, look up the start and the end of `tr`,
          * Otherwise, use the intermediate points of `tr` to look for coverage.
          * @param tr The query trajectory.
@@ -159,7 +223,7 @@ namespace map {
         /**
          * @brief Compute the error for the predicted visits `pred` compared to
          * the ground truth `gr`.
-         * 
+         *
          * We expect pred to have probability 1 at least at the start and end
          * of `gr`. As in the paper, assume the trajectory visits cells in set
          * \f$V\f$. Let \f$p_j\f$ be the visit probability for cell \f$j\f$ in
@@ -181,7 +245,7 @@ namespace map {
         /**
          * @brief Compute the error for our prediction for `tr` compared to the
          * ground truth `gr`.
-         * 
+         *
          * If `intermediate` is false, look up the start and the end of `tr`,
          * Otherwise, use the intermediate points of `tr` to look for coverage,
          * then compare piecewise with `gr`. We essentially combine `query` and

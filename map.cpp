@@ -21,20 +21,11 @@
 #include "problems.hpp"
 
 namespace map {
-    ShortcutGraph::ShortcutGraph(std::vector<Vertex> const& tr,
-            map::Map const& map): vs(tr) {
-        for (std::size_t i = 0; i < vs.size() - 1; ++i)
-            for (std::size_t j = i + 1; j < vs.size(); ++j)
-                if (map.covered(vs, i, j, false))
-                    adj[i].insert(j);
+    constexpr bool EdgeEqualV::operator()(Edge const& a, Edge const& b) const {
+        return a.v == b.v;
     }
 
-    void ShortcutGraph::add_single_hops() {
-        for (std::size_t i = 0; i < vs.size() - 1; ++i)
-            adj[i].emplace(i + 1);
-    }
-
-    bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret) {
+    bool ShortcutGraph::sp_unweighted(std::vector<std::size_t>& ret) {
         std::vector<bool> visited(vs.size());
         std::vector<std::size_t> prev(vs.size());
         std::queue<std::size_t> q;
@@ -44,7 +35,7 @@ namespace map {
 
         while (!q.empty() && !visited[vs.size() - 1]) {
             auto cur = q.front();
-            for (auto n: adj[cur]) {
+            for (auto [n, w]: adj[cur]) {
                 visited[n] = true;
                 prev[n] = cur;
                 q.push(std::move(n));
@@ -63,6 +54,72 @@ namespace map {
         }
         ret.shrink_to_fit();
         return visited[vs.size() - 1];
+    }
+
+    bool ShortcutGraph::sp_weighted(std::vector<std::size_t>& ret) {
+        std::vector<int> distance(vs.size(), std::numeric_limits<int>::max());
+        std::vector<std::size_t> hops(vs.size(),
+            std::numeric_limits<std::size_t>::max());
+        std::vector<std::size_t> prev(vs.size());
+        std::priority_queue<Edge, std::vector<Edge>,
+            EdgeOrderW<std::greater>> q;
+        prev[0] = 0;
+        distance[0] = 0;
+        hops[0] = 0;
+        q.push({0, distance[0]});
+
+        while (!q.empty()) {
+            auto [cid, cw] = q.top();
+            if (cw <= distance[cid]) {
+                for (auto [n, w]: adj[cid]) {
+                    auto alt = cw + w;
+                    if (alt < distance[n]) {
+                        distance[n] = alt;
+                        prev[n] = cid;
+                        hops[n] = hops[cid] + 1;
+                        q.push({n, alt});
+                    }
+                    else if (alt == distance[n]) {
+                        if (hops[n] > hops[cid] + 1) {
+                            hops[n] = hops[cid] + 1;
+                            prev[n] = cid;
+                            q.push({n, alt});
+                        }
+                    }
+                }
+            }
+            q.pop();
+        }
+
+        ret.clear();
+        if (distance[vs.size() - 1] < std::numeric_limits<int>::max()) {
+            std::size_t cur{vs.size() - 1};
+            ret.push_back(cur);
+            while (cur != prev[cur]) {
+                cur = prev[cur];
+                ret.push_back(cur);
+            }
+        }
+        ret.shrink_to_fit();
+        return ret.size() > 0;
+    }
+
+    ShortcutGraph::ShortcutGraph(std::vector<Vertex> const& tr,
+            map::Map const& map): vs(tr) {
+        for (std::size_t i = 0; i < vs.size() - 1; ++i)
+            for (std::size_t j = i + 1; j < vs.size(); ++j)
+                if (map.covered(vs, i, j, false))
+                    adj[i].insert({j, 0});
+    }
+
+    void ShortcutGraph::add_single_hops() {
+        for (std::size_t i = 0; i < vs.size() - 1; ++i)
+            adj[i].insert({i + 1, 1});
+        added_hops = true;
+    }
+
+    bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret) {
+        return added_hops ? sp_weighted(ret) : sp_unweighted(ret);
     }
 
     bool Map::is_present(Meas const& s, Meas const& e) const {
@@ -112,7 +169,7 @@ namespace map {
     std::pair<bool, Probs> Map::query(Traj const& tr,
             bool intermediate) const {
         if (!intermediate) {
-            auto s = tr[0], e = tr[tr.size() - 1];
+            auto s = tr.front(), e = tr.back();
             return {is_present(s, e), single_query(s, e)};
         }
 
