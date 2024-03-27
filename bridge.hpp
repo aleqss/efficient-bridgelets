@@ -64,5 +64,7 @@ namespace util {
      * @return The averaged visit probability map.
      */
     Probs average(std::vector<Probs> const& pr_maps);
+
+    Probs ignore_pr(Probs const& pred);
 }
 #endif
