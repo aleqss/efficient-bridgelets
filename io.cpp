@@ -62,6 +62,7 @@ namespace io {
         char comma;
 
         while (std::getline(inf, infline)) {
+            lproc.clear();
             lproc.str(std::move(infline));
             lproc >> t >> comma >> x >> comma >> y;
             result.emplace_back(t, x, y);

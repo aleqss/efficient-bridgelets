@@ -41,7 +41,7 @@ namespace dp {
         if (t > T)
             return false;
         auto [shi, shj] = shift;
-        auto loc = blocked.find({i, j, 0});
+        auto loc = blocked.find({i - shi, j - shj, 0});
         auto tf = flip ? T - t : t;
         auto tfs = static_cast<Loc>(tf);
         auto is = absv(i - shi), js = absv(j - shj);
@@ -51,7 +51,7 @@ namespace dp {
     bool DP::test_index_dn(Loc const& i, Loc const& j, Time const& t) const {
         auto Ts = static_cast<Loc>(T);
         auto [shi, shj] = shift;
-        auto loc = blocked.find({i, j, 0});
+        auto loc = blocked.find({i - shi, j - shj, 0});
         auto tf = flip ? T - t : t;
         Loc is = f * (i - shi) + Ts, js = f * (j - shj) + Ts;
         return t <= T && is >= 0 && js >= 0
@@ -129,12 +129,12 @@ namespace dp {
                 }
             }
 
-            for (Time t = 0; t < T; ++t) {
+            for (Time t = 1; t <= T; ++t) {
                 for (Loc i = -Ts; i <= Ts; ++i) {
                     for (Loc j = -Ts; j <= Ts; ++j) {
                         auto loc = blocked.find({i, j, 0});
-                        if (loc == blocked.end() || t + 1 < loc->start)
-                            at(i, j, t + 1) = propagate(*this, i, j, t);
+                        if (loc == blocked.end() || t < loc->start)
+                            at(i, j, t) = propagate(*this, i, j, t - 1);
                     }
                 }
             }
@@ -149,9 +149,9 @@ namespace dp {
             for (Time t = 1; t <= T; ++t) {
                 auto ts = static_cast<Loc>(t);
                 for (Loc i = -ts; i <= ts; ++i) {
-                    for (Loc j = absv(i) - ts; j <= ts - absv(i); ++j) {
+                    for (Loc j = -(ts - absv(i)); j <= ts - absv(i); ++j) {
                         loc = blocked.find({i, j, 0});
-                        if (loc == blocked.end() || t + 1 < loc->start)
+                        if (loc == blocked.end() || t < loc->start)
                             at(i, j, t) = propagate(*this, i, j, t - 1);
                     }
                 }
@@ -197,9 +197,12 @@ namespace dp {
         else {
             for (Time t = 0; t <= T; ++t) {
                 auto ts = static_cast<Loc>(t);
-                for (Loc i = xs - ts; i <= xs + ts; ++i)
-                    for (Loc j = ys - ts + absv(i); j <= ys + ts - absv(i); ++j)
-                        res.at(i, j, t) = r->at(i, j, t) * other.at(i, j, t);
+                for (Loc i = -ts; i <= ts; ++i)
+                    for (Loc j = -(ts - absv(i)); j <= ts - absv(i); ++j) {
+                        Loc ish = i + xs, jsh = j + ys;
+                        res.at(ish, jsh, t) =
+                            r->at(ish, jsh, t) * other.at(ish, jsh, t);
+                    }
             }
         }
         res.blocked = blocked;
@@ -220,11 +223,13 @@ namespace dp {
                             res[{i, j}] += r->at(i, j, t);
         }
         else {
-            for (Loc i = is - Ts; i <= is + Ts; ++i)
-                for (Loc j = js - Ts + absv(i); j <= js + Ts - absv(i); ++j)
+            for (Loc i = -Ts; i <= Ts; ++i)
+                for (Loc j = -(Ts - absv(i)); j <= Ts - absv(i); ++j) {
+                    Loc ish = i + is, jsh = j + js;
                     for (Time t = 0; t <= Tmax; ++t)
-                        if (r->at(i, j, t) > 0)
-                            res[{i, j}] += r->at(i, j, t);
+                        if (r->at(ish, jsh, t) > 0)
+                            res[{ish, jsh}] += r->at(ish, jsh, t);
+                }
         }
         return res;
     }
