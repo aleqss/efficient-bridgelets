@@ -23,6 +23,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(ASAN "Use address sanitizer" Off)
 option(UBSAN "Use UB sanitizer" Off)
 option(PROF "Set up for use with gprof" Off)
+option(TEST "Set up testing code" Off)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -71,8 +72,30 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     target_compile_options(randomwalks PRIVATE ${CLANG_OPTIONS})
     target_link_options(randomwalks PUBLIC "-stdlib=libstdc++")
     # Disable this if you want to use libc++
-else()
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     target_compile_options(randomwalks PRIVATE ${MSVC_OPTIONS})
+else()
+    message(FATAL_ERROR "We do not support ${CMAKE_CXX_COMPILER_ID}.")
 endif()
 
 target_link_libraries(randomwalks PUBLIC gmp::gmpxx gmp::gmp)
+
+if(TEST)
+    include(FetchContent)
+    FetchContent_Declare(Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.5.3
+    )
+    FetchContent_MakeAvailable(Catch2)
+    add_executable(tests test.cpp bridge.cpp debug_print.cpp defs.cpp dp.cpp
+        explicit.cpp io.cpp map.cpp problems.cpp)
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        target_compile_options(tests PRIVATE ${GNU_OPTIONS})
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        target_compile_options(tests PRIVATE ${CLANG_OPTIONS})
+        target_link_options(tests PUBLIC "-stdlib=libstdc++")
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+        target_compile_options(tests PRIVATE ${MSVC_OPTIONS})
+    endif()
+    target_link_libraries(tests PUBLIC gmp::gmpxx gmp::gmp Catch2::Catch2WithMain)
+endif()
