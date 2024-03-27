@@ -146,6 +146,12 @@ namespace map {
         /// Whether to allow diagonal movement.
         bool diag = false;
 
+    public:
+        enum class Inter {
+            none, few, most, all
+        };
+
+    private:
         /**
          * @brief Check if any trajectories go from `s` to `e`.
          * @param s Start location (t1, x1, y1).
@@ -171,7 +177,7 @@ namespace map {
          * best path.
          */
         std::pair<bool, std::vector<std::size_t>> find_path(
-            Traj const& tr) const;
+            Traj const& tr, Inter use_points) const;
 
     public:
         /**
@@ -211,8 +217,10 @@ namespace map {
          * subtrajectory to try to cover the trajectory in pieces.
          * @return Whether `tr` is covered by `map` and the prediction.
          */
+        // std::pair<bool, Probs> query(Traj const& tr,
+        //     bool intermediate = false) const;
         std::pair<bool, Probs> query(Traj const& tr,
-            bool intermediate = false) const;
+            Inter use_points = Inter::none) const;
 
         /**
          * @brief Check if the subtrajectory of `tr` from index `s` to index
@@ -224,8 +232,10 @@ namespace map {
          * subtrajectory to try to cover the trajectory in pieces.
          * @return Whether the trajectory is covered by `map`.
          */
+        // bool covered(Traj const& tr, std::size_t s, std::size_t e,
+        //     bool intermediate = false) const;
         bool covered(Traj const& tr, std::size_t s, std::size_t e,
-            bool intermediate = false) const;
+            Inter use_points = Inter::none) const;
 
         /**
          * @brief Compute the error for the predicted visits `pred` compared to
@@ -264,7 +274,8 @@ namespace map {
          * @return Whether `tr` is covered by `map` and the error.
          */
         std::pair<bool, double> query_error(Traj const& tr, Traj const& gr,
-            bool intermediate = false) const;
+            Inter use_points = Inter::none) const;
+            // bool intermediate = false) const;
 
         /**
          * @brief Load the saved state of `map` from an input stream.

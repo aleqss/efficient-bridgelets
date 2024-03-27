@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "bridge.hpp"
 #include "dp.hpp"
 #include "explicit.hpp"
 #include "io.hpp"
@@ -375,6 +376,22 @@ namespace {
             [](T const& t) { return t; });
     }
 
+    map::Traj select_points(map::Traj const& tr, map::Map::Inter use_points) {
+        if (tr.size() < 2)
+            return tr;
+        switch (use_points) {
+        case map::Map::Inter::none:
+            return {tr.front(), tr.back()};
+        case map::Map::Inter::few:
+        case map::Map::Inter::most:
+            return {}; // Figure this out.
+        case map::Map::Inter::all:
+            return tr;
+        default:
+            throw std::domain_error("Unhandled value of Inter enum");
+        }
+    }
+
     /**
      * @brief Run the experiment with bridges on the OpenPFLOW data.
      */
@@ -387,13 +404,30 @@ namespace {
                 return m >= 1 && m <= 4;
             }, mode);
 
-        char inter_ch, sparse_ch;
+        char sparse_ch;
+        read_flag("Should the trajectories be made sparse? [y/n]",
+            "Please type y or n.", [](char s) {
+                return s == 'y' || s == 'n';
+            }, sparse_ch);
+        bool sparse = (sparse_ch == 'y');
+
+        char inter_ch;
         read_flag("Do you want to use the intermediate points during training,"
-            " [y/n]\nand should the trajectories be made sparse? [y/n]",
-            "Please type y or n twice.", [](char const& i, char const& s){
-                return (i == 'y' || i == 'n') && (s == 'y' || s == 'n');
-            }, inter_ch, sparse_ch);
-        bool inter = (inter_ch == 'y'), sparse = (sparse_ch == 'y');
+            " and if so, should\nall be used, or maximum or minimum amount "
+            "needed? [n(o)/a(ll)/f(ew)/m(ost)]", "Please type n, a, f, or m.",
+            [](char i) {
+                return i == 'n' || i == 'a' || i == 'f' || i == 'm';
+            }, inter_ch);
+        auto use_points = (inter_ch == 'n' ? map::Map::Inter::none :
+            (inter_ch == 'a' ? map::Map::Inter::all : (inter_ch == 'f' ?
+                map::Map::Inter::few : map::Map::Inter::most)));
+
+        char diag_ch;
+        read_flag("Should diagonal movement be allowed? [y/n]",
+            "Please type y or n.", [](char d) {
+                return d == 'y' || d == 'n';
+            }, diag_ch);
+        bool diag = (diag_ch == 'y');
 
         std::filesystem::path fname = "./movement";
         fname /= std::to_string(mode);

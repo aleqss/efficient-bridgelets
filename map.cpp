@@ -108,7 +108,7 @@ namespace map {
             map::Map const& map): vs(tr) {
         for (std::size_t i = 0; i < vs.size() - 1; ++i)
             for (std::size_t j = i + 1; j < vs.size(); ++j)
-                if (map.covered(vs, i, j, false))
+                if (map.covered(vs, i, j, Map::Inter::none))
                     adj[i].insert({j, 0});
     }
 
@@ -170,48 +170,97 @@ namespace map {
             train(tr.first, tr.second);
     }
 
-    std::pair<bool, Probs> Map::query(Traj const& tr,
-            bool intermediate) const {
-        if (!intermediate) {
+    std::pair<bool, Probs> Map::query(Traj const& tr, Inter use_points) const {
+        switch (use_points) {
+        case Inter::none: {
             auto s = tr.front(), e = tr.back();
             return {is_present(s, e), single_query(s, e)};
         }
-
-        auto [cov, path] = find_path(tr);
-        std::vector<Probs> res;
-        for (std::size_t i = 0; i < path.size() - 1; ++i)
-            res.push_back(single_query(tr[path[i]], tr[path[i + 1]]));
-        return {cov, ::util::sequence(res)};
+        case Inter::few:
+        case Inter::most: {
+            auto [cov, path] = find_path(tr, use_points);
+            std::vector<Probs> res;
+            for (std::size_t i = 0; i < path.size() - 1; ++i)
+                res.push_back(single_query(tr[path[i]], tr[path[i + 1]]));
+            return {cov, ::util::sequence(res)};
+        }
+        case Inter::all: {
+            bool allc = true;
+            std::vector<Probs> res;
+            for (std::size_t i = 0; i < tr.size() - 1; ++i) {
+                allc &= is_present(tr[i], tr[i + 1]);
+                res.push_back(single_query(tr[i], tr[i + 1]));
+            }
+            return {allc, ::util::sequence(res)};
+        }
+        default:
+            throw std::domain_error("Unhandled value of Inter enum");
+        }
     }
+
+    // std::pair<bool, Probs> Map::query(Traj const& tr,
+    //         bool intermediate) const {
+    //     if (!intermediate) {
+    //         auto s = tr.front(), e = tr.back();
+    //         return {is_present(s, e), single_query(s, e)};
+    //     }
+
+    //     auto [cov, path] = find_path(tr);
+    //     std::vector<Probs> res;
+    //     for (std::size_t i = 0; i < path.size() - 1; ++i)
+    //         res.push_back(single_query(tr[path[i]], tr[path[i + 1]]));
+    //     return {cov, ::util::sequence(res)};
+    // }
 
     bool Map::covered(Traj const& tr, std::size_t s, std::size_t e,
-            bool intermediate) const {
-        if (!intermediate)
+            Inter use_points) const {
+        switch (use_points) {
+        case Inter::none:
             return is_present(tr[s], tr[e]);
-
-        ShortcutGraph gr(tr, *this);
-        std::vector<std::size_t> ign;
-        return gr.shortest_path(ign);
+        case Inter::few:
+        case Inter::most: {
+            ShortcutGraph gr(tr, *this);
+            std::vector<std::size_t> ign;
+            return gr.shortest_path(ign);
+        }
+        case Inter::all: {
+            bool cov = true;
+            for (std::size_t i = s; i < e - 1; ++i)
+                cov &= is_present(tr[i], tr[i + 1]);
+            return cov;
+        }
+        default:
+            throw std::domain_error("Unhandled value of Inter enum");
+        }
     }
+
+    // bool Map::covered(Traj const& tr, std::size_t s, std::size_t e,
+    //         bool intermediate) const {
+    //     if (!intermediate)
+    //         return is_present(tr[s], tr[e]);
+
+    //     ShortcutGraph gr(tr, *this);
+    //     std::vector<std::size_t> ign;
+    //     return gr.shortest_path(ign);
+    // }
 
     double Map::pred_error(Probs const& pred, Traj const& gr) const {
         std::unordered_set<Cell, dp::LocHash> vs;
         for (auto [t, x, y]: gr)
             vs.emplace(std::move(x), std::move(y));
-        Frac res;
+        Frac res = vs.size();
         for (auto const& [cell, prob]: pred) {
             if (vs.count(cell))
                 res -= prob;
             else
                 res += prob;
         }
-        res += vs.size();
         return ::util::getd(res);
     }
 
     std::pair<bool, double> Map::query_error(Traj const& tr, Traj const& gr,
-            bool intermediate) const {
-        auto [cov, probs] = query(tr, intermediate);
+            Inter use_points) const {
+        auto [cov, probs] = query(tr, use_points);
         auto error = pred_error(probs, gr);
         return {cov, error};
     }
