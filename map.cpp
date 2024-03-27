@@ -115,11 +115,51 @@ namespace map {
     void ShortcutGraph::add_single_hops() {
         for (std::size_t i = 0; i < vs.size() - 1; ++i)
             adj[i].insert({i + 1, 1});
-        added_hops = true;
+        // added_hops = true;
     }
 
-    bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret) {
-        return added_hops ? sp_weighted(ret) : sp_unweighted(ret);
+    // bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret) {
+    //     return added_hops ? sp_weighted(ret) : sp_unweighted(ret);
+    // }
+    bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret,
+            std::function<bool(std::size_t, std::size_t)> check_hops) {
+        std::vector<int> distance(vs.size(), std::numeric_limits<int>::max());
+        std::vector<std::size_t> hops(vs.size(),
+            std::numeric_limits<std::size_t>::max());
+        std::vector<std::size_t> prev(vs.size());
+
+        distance[0] = 0;
+        hops[0] = 0;
+        prev[0] = 0;
+
+        for (std::size_t i = 0; i < vs.size(); ++i) {
+            for (auto [j, w]: adj[i]) {
+                auto alt = distance[i] + w;
+                if (distance[j] > alt) {
+                    distance[j] = alt;
+                    hops[j] = hops[i] + 1;
+                    prev[j] = i;
+                }
+                else if (distance[j] == alt) {
+                    if (check_hops(hops[j], hops[i])) {
+                        hops[j] = hops[i] + 1;
+                        prev[j] = i;
+                    }
+                }
+            }
+        }
+
+        ret.clear();
+        if (distance[vs.size() - 1] < std::numeric_limits<int>::max()) {
+            std::size_t cur{vs.size() - 1};
+            ret.push_back(cur);
+            while (cur != prev[cur]) {
+                cur = prev[cur];
+                ret.push_back(cur);
+            }
+        }
+        ret.shrink_to_fit();
+        return ret.size() > 0;
     }
 
     bool Map::is_present(Meas const& s, Meas const& e) const {
@@ -136,14 +176,31 @@ namespace map {
         return ::util::average(pr_maps);
     }
 
-    std::pair<bool, std::vector<std::size_t>> Map::find_path(
-            Traj const& tr) const {
+    std::pair<bool, std::vector<std::size_t>> Map::find_path(Traj const& tr,
+            Inter use_points) const {
+        std::function<bool(std::size_t, std::size_t)> chk_hops;
+        switch (use_points) {
+        case Inter::few:
+            chk_hops = [](std::size_t hj, std::size_t hi) noexcept {
+                return hj > hi + 1;
+            };
+            break;
+        case Inter::most:
+            chk_hops = [](std::size_t hj, std::size_t hi) noexcept {
+                return hj < hi + 1;
+            };
+            break;
+        default:
+            throw std::domain_error("No path to find when using all or no "
+                "intermediate points");
+        }
+
         ShortcutGraph sg(tr, *this);
         std::vector<std::size_t> path;
-        bool full_cover = sg.shortest_path(path);
+        bool full_cover = sg.shortest_path(path, chk_hops);
         if (!full_cover) {
             sg.add_single_hops();
-            [[maybe_unused]] auto r = sg.shortest_path(path);
+            [[maybe_unused]] auto r = sg.shortest_path(path, chk_hops);
             assert(r);
         }
         return {full_cover, path};

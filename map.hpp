@@ -73,7 +73,7 @@ namespace map {
         /// Directed adjacency list with edge weights.
         std::vector<std::unordered_set<Edge, std::hash<Edge>, EdgeEqualV>> adj;
         /// Whether we have added single hops.
-        bool added_hops = false;
+        // bool added_hops = false;
 
         /**
          * @brief Return the unweighted shortest path from the start to the end
@@ -135,7 +135,11 @@ namespace map {
          * @return Whether a path from start to end exists; should always
          * return `true` if `add_single_hops()` has been called.
          */
-        bool shortest_path(std::vector<std::size_t>& ret);
+        bool shortest_path(std::vector<std::size_t>& ret,
+            std::function<bool(std::size_t, std::size_t)> check_hops = [](
+                    std::size_t hj, std::size_t hi) noexcept {
+                return hj > hi + 1;
+            });
     };
 
     class Map {
