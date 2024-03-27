@@ -448,30 +448,45 @@ namespace {
         std::cout << "Testing trajectories.\n\n";
         std::ofstream stats(fname / "stats.txt");
         std::ifstream testlist(fname / "test.txt");
-        std::vector<PBD> errors;
+        std::vector<PBD> err, err_learned, err_naive;
         auto testfiles = io::read_flist(testlist);
         for (auto const& test_id: testfiles) {
             std::ifstream testf(fname / std::to_string(test_id));
             auto ground = io::read_traj(testf);
-            auto [c, e] = reg.query_error(
-                sparse ? io::sparsify(ground) : ground, ground, inter);
-            stats << test_id << ' ' << c << ' ' << e << '\n';
-            errors.emplace_back(c, e);
+            auto [c, probs] = reg.query(sparse ? io::sparsify(ground) : ground,
+                use_points);
+            auto e = reg.pred_error(probs, ground);
+            auto e_learned = reg.pred_error(util::ignore_pr(probs), ground);
+
+            auto naive = select_points(sparse ? io::sparsify(ground) : ground,
+                use_points);
+            auto e_naive = reg.pred_error(util::bridge(naive, 0,
+                naive.size() - 1, diag), ground);
+            // auto [c, e] = reg.query_error(
+            //     sparse ? io::sparsify(ground) : ground, ground, use_points);
+            stats << test_id << ' ' << c << ' ' << e << ' ' << e_learned << ' '
+                << e_naive << '\n';
+            err.emplace_back(c, e);
+            err_learned.emplace_back(c, e_learned);
+            err_naive.emplace_back(c, e_naive);
         }
-        std::vector<double> cov, uncov;
-        for (auto const& [c, e]: errors) {
-            if (c)
-                cov.push_back(e);
-            else
-                uncov.push_back(e);
+        std::vector<decltype(err)> it{err, err_learned, err_naive};
+        for (auto& errors: it) {
+            std::vector<double> cov, uncov;
+            for (auto const& [c, e]: errors) {
+                if (c)
+                    cov.push_back(e);
+                else
+                    uncov.push_back(e);
+            }
+            auto med = median(errors, [](PBD const& a, PBD const& b) {
+                    return a.second < b.second; },
+                [](PBD const& p) {return p.second;});
+            auto med_cov = median(cov);
+            auto med_uncov = median(uncov);
+            std::cout << "Median errors:\nCovered: " << med_cov << "\nUncovered: "
+                << med_uncov << "\nTotal: " << med << '\n';
         }
-        auto med = median(errors, [](PBD const& a, PBD const& b) {
-                return a.second < b.second; },
-            [](PBD const& p) {return p.second;});
-        auto med_cov = median(cov);
-        auto med_uncov = median(uncov);
-        std::cout << "Median errors:\nCovered: " << med_cov << "\nUncovered: "
-            << med_uncov << "\nTotal: " << med << '\n';
     }
 }
 
