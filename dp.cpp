@@ -1,4 +1,4 @@
-/* Copyright 2022, 2023 Aleksandr Popov
+/* Copyright 2022, 2023, 2024 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -232,5 +232,12 @@ namespace dp {
     Cnt uniform_prop(DP const& r, Loc const& i, Loc const& j, Time const& t) {
         return r.at(i, j, t) + r.at(i - 1, j, t) + r.at(i + 1, j, t)
             + r.at(i, j - 1, t) + r.at(i, j + 1, t);
+    }
+
+    Cnt uniform_diag_prop(DP const& r, Loc const& i, Loc const& j,
+            Time const& t) {
+        return r.at(i, j, t) + r.at(i - 1, j + 1, t) + r.at(i - 1, j, t)
+            + r.at(i - 1, j - 1, t) + r.at(i, j - 1, t) + r.at(i + 1, j - 1, t)
+            + r.at(i + 1, j, t) + r.at(i + 1, j + 1, t) + r.at(i, j + 1, t);
     }
 }

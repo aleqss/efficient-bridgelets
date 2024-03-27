@@ -1,4 +1,4 @@
-/* Copyright 2022, 2023 Aleksandr Popov
+/* Copyright 2022, 2023, 2024 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -234,5 +234,17 @@ namespace dp {
      * @param t The time from which we propagate to t + 1.
      */
     Cnt uniform_prop(DP const& r, Loc const& i, Loc const& j, Time const& t);
+
+    /**
+     * @brief Uniform propagation for the DP allowing diagonal movement: one
+     * path in each of eight neighbouring directions, one path for staying in
+     * the same spot.
+     * @param r The instance of the DP from which we propagate.
+     * @param i First dimension.
+     * @param j Second dimension.
+     * @param t The time from which we propagate to t + 1.
+     */
+    Cnt uniform_diag_prop(DP const& r, Loc const& i, Loc const& j,
+        Time const& t);
 }
 #endif

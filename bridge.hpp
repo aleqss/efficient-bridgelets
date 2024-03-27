@@ -23,10 +23,11 @@ namespace util {
      * @brief Compute the visit probabilities of a bridgelet from `s` to `e`.
      * @param s The starting point \f$(t_1, x_1, y_1)\f$ of a bridgelet.
      * @param e The endpoint \f$(t_2, x_2, y_2)\f$ of a bridgelet.
+     * @param diag Whether to allow diagonal movement.
      * @return The visit probabilities for the bridgelet from \f$(x_1, y_1)\f$
      * to \f$(x_2, y_2)\f$ in time \f$t_2 - t_1\f$.
      */
-    Probs bridgelet(Meas const& s, Meas const& e);
+    Probs bridgelet(Meas const& s, Meas const& e, bool diag = false);
 
     /**
      * @brief Combine a sequence of bridgelets or partial bridges.
@@ -49,9 +50,11 @@ namespace util {
      * @param tr The trajectory.
      * @param s The start index for the bridge in the trajectory.
      * @param e The final index for the bridge in the trajectory.
+     * @param diag Whether to allow diagonal movement.
      * @return The visit probability map for the bridge.
      */
-    Probs bridge(Traj const& tr, std::size_t s, std::size_t e);
+    Probs bridge(Traj const& tr, std::size_t s, std::size_t e,
+        bool diag = false);
 
     /**
      * @brief Average several visit probability maps. This is only meaningful

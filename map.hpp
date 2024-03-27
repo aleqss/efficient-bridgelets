@@ -143,6 +143,8 @@ namespace map {
         std::unordered_map<BridgeID, std::forward_list<SubTraj>, TrajHash> map;
         /// The trajectories with their IDs.
         std::unordered_map<std::uint32_t, Traj> tr_reg;
+        /// Whether to allow diagonal movement.
+        bool diag = false;
 
         /**
          * @brief Check if any trajectories go from `s` to `e`.
@@ -172,6 +174,11 @@ namespace map {
             Traj const& tr) const;
 
     public:
+        /**
+         * @brief Enable diagonal movement.
+         */
+        void enable_diag();
+
         /**
          * @brief Retrieve the stored trajectory with a given index.
          * @param id The index of the trajectory.

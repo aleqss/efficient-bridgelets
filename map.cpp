@@ -128,11 +128,11 @@ namespace map {
 
     Probs Map::single_query(Meas const& s, Meas const& e) const {
         if (!is_present(s, e))
-            return ::util::bridgelet(s, e);
+            return ::util::bridgelet(s, e, diag);
 
         std::vector<Probs> pr_maps;
         for (auto const& [tr_id, tr_s, tr_e]: map.at(to_bridge_id(s, e)))
-            pr_maps.push_back(::util::bridge(get_tr(tr_id), tr_s, tr_e));
+            pr_maps.push_back(::util::bridge(get_tr(tr_id), tr_s, tr_e, diag));
         return ::util::average(pr_maps);
     }
 
@@ -147,6 +147,10 @@ namespace map {
             assert(r);
         }
         return {full_cover, path};
+    }
+
+    void Map::enable_diag() {
+        diag = true;
     }
 
     Traj const& Map::get_tr(std::uint32_t id) const {

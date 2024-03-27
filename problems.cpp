@@ -1,4 +1,4 @@
-/* Copyright 2022 Aleksandr Popov
+/* Copyright 2022, 2024 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -17,16 +17,18 @@
 
 namespace prob {
     DP all_paths(Time T, Cell start,
-            std::unordered_set<Blocked> const& blocked) {
-        DP res(std::move(T), dp::uniform_prop, std::move(start), blocked);
+            std::unordered_set<Blocked> const& blocked, bool diag) {
+        auto prop = diag ? dp::uniform_diag_prop : dp::uniform_prop;
+        DP res(std::move(T), prop, std::move(start), blocked, diag);
         return res;
     }
 
-    DP visit_all(Time T, Cell start, Cell end) {
-        DP first_visit(T, dp::uniform_prop, {0, 0}, {{0, 0, 1}});
+    DP visit_all(Time T, Cell start, Cell end, bool diag) {
+        auto prop = diag ? dp::uniform_diag_prop : dp::uniform_prop;
+        DP first_visit(T, prop, {0, 0}, {{0, 0, 1}}, diag);
         first_visit.set_shift(std::move(start));
         first_visit.flip_coords();
-        DP rest(std::move(T), dp::uniform_prop);
+        DP rest(std::move(T), prop, {0, 0}, {}, diag);
         rest.flip_time();
         rest.set_shift(std::move(end));
         return first_visit * rest;

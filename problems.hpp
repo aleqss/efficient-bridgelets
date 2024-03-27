@@ -1,4 +1,4 @@
-/* Copyright 2022 Aleksandr Popov
+/* Copyright 2022, 2024 Aleksandr Popov
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation, either version 3 of the License, or (at your option)
@@ -26,10 +26,11 @@ namespace prob {
      * @param T The maximum number of steps / time limit.
      * @param start The origin, from which we start the paths.
      * @param blocked The set of blocked cells, none by default.
+     * @param diag Whether to allow diagonal movement.
      * @return An instance of `DP` with the counts, accessible with at(x, y, t).
      */
     DP all_paths(Time T, Cell start,
-        std::unordered_set<Blocked> const& blocked = {});
+        std::unordered_set<Blocked> const& blocked = {}, bool diag = false);
 
     /**
      * @brief For all possible coordinates (a, b) and for all time steps
@@ -40,9 +41,10 @@ namespace prob {
      * @param T The maximum number of steps / time limit.
      * @param start The origin, from which we start the paths.
      * @param end The final point of the paths.
+     * @param diag Whether to allow diagonal movement.
      * @return An instance of `DP` with the counts, accessible with at(x, y, t).
      */
-    DP visit_all(Time T, Cell start, Cell end);
+    DP visit_all(Time T, Cell start, Cell end, bool diag = false);
 
     /**
      * @brief Generate a path from `start` to `end` according to the

@@ -151,14 +151,14 @@ namespace {
         std::cout << "Computing the DP for all paths... " << std::flush;
         auto [r1, t1] = time_and_save(prob::all_paths, 10u,
             std::make_pair(0_loc, 0_loc),
-            std::initializer_list<dp::Blocked>{});
+            std::initializer_list<dp::Blocked>{}, false);
         std::cout << "done." << std::endl;
         std::ofstream out1("./data/paths_dp");
         io::dp_write(r1, 10u, {0, 0}, out1);
 
         std::cout << "Computing the DP for visits... " << std::flush;
         auto [r2, t2] = time_and_save(prob::visit_all, T1,
-            std::make_pair(0_loc, 0_loc), std::make_pair(2_loc, 1_loc));
+            std::make_pair(0_loc, 0_loc), std::make_pair(2_loc, 1_loc), false);
         std::cout << "done.\n" << std::endl;
         std::ofstream out2("./data/visits_dp");
         io::flat_write(r2, T1, {0, 0}, out2);
@@ -400,6 +400,8 @@ namespace {
         std::ifstream trainlist(fname / "train.txt");
         auto trainfiles = io::read_flist(trainlist);
         map::Map reg;
+        if (diag)
+            reg.enable_diag();
         for (auto const& train_id: trainfiles) {
             std::ifstream trainf(fname / std::to_string(train_id));
             if (sparse)
