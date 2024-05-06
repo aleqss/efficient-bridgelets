@@ -15,8 +15,6 @@
 
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
-#include <vector>
 #include "defs.hpp"
 
 namespace xpl {
@@ -25,8 +23,8 @@ namespace xpl {
     using PList = std::unordered_set<Cell, LocHash>;
 
     /**
-     * @brief For all possible coordinates (x, y), count the paths from shift to
-     * (x, y) in T steps.
+     * @brief For all possible coordinates (x, y), count the paths from `shift`
+     * to (x, y) in `T` steps.
      *
      * Unlike `DP`, no information about intermediate time steps is available.
      * Note: this runs in O(5^T) time, use the DP instead.
@@ -38,8 +36,8 @@ namespace xpl {
     Table compute_paths(Time const& T, Cell const& shift);
 
     /**
-     * @brief For all possible coordinates (x, y), count the paths from shift to
-     * end in T steps that visit (x, y).
+     * @brief For all possible coordinates (x, y), count the paths from `shift`
+     * to `end` in `T` steps that visit (x, y).
      *
      * Note: this runs in O(5^T) time, use the DP instead.
      * @param T The maximum number of steps / time limit.

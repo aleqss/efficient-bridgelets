@@ -25,6 +25,7 @@
  * implementation are hopefully the only files that need to be rewritten.
  * For example, for `Frac` that is `double`, `getd` becomes a pass-through
  * function, and divide should return `res.get_d();` instead.
+ * Also, adapt `decode` and `max_num` in explicit.cpp.
  */
 namespace dp {
     /// Count in a cell.
@@ -70,7 +71,7 @@ namespace util {
 
     /**
      * @brief Normalise a `Visits` map to the value in the cell `s`.
-     * @param v A valid visit probability map, like the one returned by
+     * @param v A valid visit count map, like the one returned by
      * `dp::DP::flatten`.
      * @param s The start cell whose value should be normalised to 1.
      * @return The normalised map (using fractions currently).
@@ -82,7 +83,7 @@ namespace util {
      * division, going through `mpq_class`.
      * @param num The numerator.
      * @param den The denominator.
-     * @return num / den.
+     * @return `num` / `den`.
      */
     Frac divide(Cnt const& num, Cnt const& den);
 

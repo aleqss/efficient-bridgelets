@@ -13,6 +13,7 @@
 #ifndef IO_H
 #define IO_H
 
+#include <cstdint>
 #include <iosfwd>
 #include <vector>
 #include "defs.hpp"
@@ -22,7 +23,7 @@ namespace dp {
 }
 
 namespace io {
-    using ::dp::Loc, ::dp::Time, ::dp::Cell, ::map::Traj;
+    using ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::DP, ::map::Traj;
 
     /**
      * @brief Output the last layer of the DP to a stream.
@@ -31,21 +32,21 @@ namespace io {
      * @param shift The start point of the DP.
      * @param outf The output stream.
      */
-    void dp_write(dp::DP const& table, Time const& T, Cell const& shift,
+    void dp_write(DP const& table, Time const& T, Cell const& shift,
         std::ostream& outf);
 
     /**
      * @brief Output the flattened DP to a stream.
      * @param table The DP.
-     * @param T The T of the DP; we output the layer at time T.
+     * @param T The T of the DP; we output the DP flattened up to time T.
      * @param shift The start point of the DP.
      * @param outf The output stream.
      */
-    void flat_write(dp::DP const& table, Time const& T, Cell const& shift,
+    void flat_write(DP const& table, Time const& T, Cell const& shift,
         std::ostream& outf);
 
     /**
-     * @brief Output a trajectory to a stream.
+     * @brief Output an untimed trajectory to a stream.
      * @param traj The trajectory.
      * @param outf The output stream.
      */

@@ -66,6 +66,12 @@ namespace util {
      */
     Probs average(std::vector<Probs> const& pr_maps);
 
+    /**
+     * @brief Make a simple bead from our probability map by setting all
+     * non-zero visit probabilities to 1.
+     * @param pred The computed visit probability map.
+     * @return The bead.
+     */
     Probs ignore_pr(Probs const& pred);
 
     /**

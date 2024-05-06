@@ -45,8 +45,8 @@ namespace {
 
 namespace xpl {
     Table compute_paths(Time const& T, Cell const& shift) {
-        std::unordered_map<Cell, Cnt, LocHash> table;
-        auto max_cnt = max_num(T);
+        Table table;
+        Cnt max_cnt = max_num(T);
         auto [is, js] = shift;
         PList visited;
         for (Cnt cntr = 0; cntr <= max_cnt; ++cntr) {
@@ -58,7 +58,7 @@ namespace xpl {
 
     Table visits(Time const& T, Cell const& shift, Cell const& end) {
         Table table;
-        auto max_cnt = max_num(T);
+        Cnt max_cnt = max_num(T);
         auto [is, js] = shift;
         PList visited;
         for (Cnt cntr = 0; cntr <= max_cnt; ++cntr) {

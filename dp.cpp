@@ -13,15 +13,9 @@
 #include "dp.hpp"
 
 #include <cassert>
-#include <cstddef>
 #include <limits>
 #include <stdexcept>
-
-namespace {
-    inline dp::Loc absv(dp::Loc const& val) {
-        return val < 0 ? -val : val;
-    }
-}
+#include <utility>
 
 namespace dp {
     Blocked::Blocked(Loc x, Loc y, Time s): i{std::move(x)}, j{std::move(y)},
@@ -44,7 +38,7 @@ namespace dp {
         auto loc = blocked.find({i - shi, j - shj, 0});
         auto tf = flip ? T - t : t;
         auto tfs = static_cast<Loc>(tf);
-        auto is = absv(i - shi), js = absv(j - shj);
+        auto is = util::absv(i - shi), js = util::absv(j - shj);
         return is + js <= tfs && (loc == blocked.end() || tf < loc->start);
     }
 
@@ -71,13 +65,13 @@ namespace dp {
         // 1. start index of t-th layer.
         std::size_t ret = (tf - 1) * tf * (2 * tf - 1) / 3 + tf * tf;
         // 2. centre of i-th row.
-        auto rit = tf - static_cast<std::size_t>(absv(is));
+        auto rit = tf - static_cast<std::size_t>(util::absv(is));
         if (is <= 0)
             ret += rit * (rit + 1);
         else
             ret += 2 * tf * (tf + 1) - rit * (rit + 1);
         // 3. j-th position w.r.t. the centre.
-        auto absjs = static_cast<std::size_t>(absv(js));
+        auto absjs = static_cast<std::size_t>(util::absv(js));
         return js < 0 ? ret - absjs : ret + absjs;
     }
 
@@ -110,7 +104,7 @@ namespace dp {
     DP::DP(Time max_time, std::function<Cnt(DP const&, Loc const&, Loc const&,
             Time const&)> propagate, Cell origin,
             std::unordered_set<Blocked> const& blocked_cells, bool dense_st):
-            T{std::move(max_time)}, dense{dense_st} {
+            T{std::move(max_time)}, dense{std::move(dense_st)} {
         if (T > std::numeric_limits<Loc>::max())
             throw std::length_error("Please pick a lower value of T.");
 
@@ -118,7 +112,7 @@ namespace dp {
         for (auto const& cell: blocked_cells)
             blocked.emplace(cell.i - is, cell.j - js, cell.start);
 
-        if (dense_st) {
+        if (dense) {
             table = std::vector<Cnt>((T + 1) * (2 * T + 1) * (2 * T + 1));
             Loc Ts = static_cast<Loc>(T);
             for (Loc i = -Ts; i <= Ts; ++i) {
@@ -149,7 +143,7 @@ namespace dp {
             for (Time t = 1; t <= T; ++t) {
                 auto ts = static_cast<Loc>(t);
                 for (Loc i = -ts; i <= ts; ++i) {
-                    for (Loc j = -(ts - absv(i)); j <= ts - absv(i); ++j) {
+                    for (Loc j = -(ts - util::absv(i)); j <= ts - util::absv(i); ++j) {
                         loc = blocked.find({i, j, 0});
                         if (loc == blocked.end() || t < loc->start)
                             at(i, j, t) = propagate(*this, i, j, t - 1);
@@ -198,7 +192,7 @@ namespace dp {
             for (Time t = 0; t <= T; ++t) {
                 auto ts = static_cast<Loc>(t);
                 for (Loc i = -ts; i <= ts; ++i)
-                    for (Loc j = -(ts - absv(i)); j <= ts - absv(i); ++j) {
+                    for (Loc j = -(ts - util::absv(i)); j <= ts - util::absv(i); ++j) {
                         Loc ish = i + xs, jsh = j + ys;
                         res.at(ish, jsh, t) =
                             r->at(ish, jsh, t) * other.at(ish, jsh, t);
@@ -224,7 +218,7 @@ namespace dp {
         }
         else {
             for (Loc i = -Ts; i <= Ts; ++i)
-                for (Loc j = -(Ts - absv(i)); j <= Ts - absv(i); ++j) {
+                for (Loc j = -(Ts - util::absv(i)); j <= Ts - util::absv(i); ++j) {
                     Loc ish = i + is, jsh = j + js;
                     for (Time t = 0; t <= Tmax; ++t)
                         if (r->at(ish, jsh, t) > 0)

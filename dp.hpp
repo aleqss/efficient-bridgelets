@@ -13,9 +13,9 @@
 #ifndef DP_H
 #define DP_H
 
+#include <cstddef>
 #include <functional>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 #include "defs.hpp"
 
@@ -49,9 +49,9 @@ namespace dp {
 
 // Specialise std::hash to dp::Blocked for use in unordered_set.
 namespace std {
-    template<> struct hash<dp::Blocked> {
-        std::size_t operator()(dp::Blocked const& t) const noexcept {
-            return dp::hash_helper(t.i, t.j);
+    template<> struct hash<::dp::Blocked> {
+        size_t operator()(::dp::Blocked const& t) const noexcept {
+            return ::dp::hash_helper(t.i, t.j);
         }
     };
 }
@@ -138,7 +138,7 @@ namespace dp {
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return The index in table that maps to (i, j, t).
+         * @return The index in `table` that maps to (i, j, t).
          */
         std::size_t index_sp(Loc const& i, Loc const& j, Time const& t) const;
 
@@ -152,16 +152,17 @@ namespace dp {
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return The index in table that maps to (i, j, t).
+         * @return The index in `table` that maps to (i, j, t).
          */
         std::size_t index_dn(Loc const& i, Loc const& j, Time const& t) const;
 
     public:
         /**
          * @brief Compute the number of paths in W_{x, y, t} for all possible
-         * (x, y) and all t <= T, starting in (0, 0).
+         * (x, y) and all t <= T, starting in `origin`, (0, 0) by default.
          * @param max_time The value of T (allowed number of steps).
          * @param propagate The propagation function, see e.g. uniform_prop.
+         * @param origin The starting location at time 0.
          * @param blocked_cells The set of blocked cells.
          * @param dense_st Whether to use the dense storage representation.
          */
@@ -174,7 +175,7 @@ namespace dp {
         /**
          * @brief Return the value P(i, j, t) in the DP, with 0 for unreachable
          * cells.
-         * @param i First dimension, with non-zero values possible from -T to T.
+         * @param i First dimension, non-zero values possible from -T to T.
          * @param j Second dimension.
          * @param t The time, between 0 and T.
          * @return The number of paths in W_{i, j, t}.
@@ -183,9 +184,9 @@ namespace dp {
 
         /**
          * @brief Return the value P(i, j, t) in the DP. Throw an exception for
-         * out-of-bounds values, so not in [-T, T] x [-T, T] x [0, T].
-         * @param i First dimension, -T to T.
-         * @param j Second dimension, -T to T.
+         * out-of-bounds values that are not stored explicitly.
+         * @param i First dimension.
+         * @param j Second dimension.
          * @param t The time, 0 to T.
          * @return The number of paths in W_{i, j, t}.
          */
@@ -203,7 +204,8 @@ namespace dp {
         void flip_coords();
 
         /**
-         * @brief Shift the origin from (0, 0) or other current one to `origin`.
+         * @brief Shift the origin from (0, 0) or other current one to
+         * `origin`.
          * @param origin The new origin.
          */
         void set_shift(Cell origin);
@@ -218,8 +220,8 @@ namespace dp {
 
         /**
          * @brief Flatten a DP to sum up the values at the same time stamp.
-         * @param max_time Only sum up from t = 0 to max_time; if max_time >= T,
-         * some up over the entire DP.
+         * @param max_time Only sum up from t = 0 to max_time; if
+         * max_time >= T, sum up over the entire DP.
          * @return A mapping from points (i, j) to the sum from DP over all t.
          */
         Visits flatten(Time const& max_time) const;

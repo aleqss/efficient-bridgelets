@@ -46,6 +46,9 @@ namespace prob {
         std::uniform_int_distribution<unsigned int> seeder;
         gmp_randclass gen(gmp_randinit_mt);
         gen.seed(seeder(helper));
+
+        // Easy fix for diag: change prev_counts, add cases 5--8.
+        // Maybe something more general possible for arbitrary kernels?
         for (Time t = T; t > 0; --t) {
             ret[t] = {ci, cj};
             Cnt total = paths.at(ci, cj, t);
