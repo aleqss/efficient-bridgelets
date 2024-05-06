@@ -41,8 +41,11 @@ namespace io {
         auto sT = static_cast<Loc>(T);
         outf << T << '\n';
         for (Loc i = is - sT; i <= is + sT; ++i)
-            for (Loc j = js - sT; j <= js + sT; ++j)
-                outf << fl_table[{i, j}] << (j < js + sT ? ' ' : '\n');
+            for (Loc j = js - sT; j <= js + sT; ++j) {
+                auto nonzero = fl_table.find({i, j});
+                outf << (nonzero != fl_table.end() ? nonzero->second : 0)
+                     << (j < js + sT ? ' ' : '\n');
+            }
     }
 
     void traj_write(std::vector<Cell> const& traj, std::ostream& outf) {
