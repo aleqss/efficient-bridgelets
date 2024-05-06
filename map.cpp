@@ -25,85 +25,6 @@ namespace map {
         return a.v == b.v;
     }
 
-    bool ShortcutGraph::sp_unweighted(std::vector<std::size_t>& ret) {
-        std::vector<bool> visited(vs.size());
-        std::vector<std::size_t> prev(vs.size());
-        std::queue<std::size_t> q;
-        visited[0] = true;
-        prev[0] = 0;
-        q.push(0u);
-
-        while (!q.empty() && !visited[vs.size() - 1]) {
-            auto cur = q.front();
-            for (auto [n, w]: adj[cur]) {
-                visited[n] = true;
-                prev[n] = cur;
-                q.push(std::move(n));
-            }
-            q.pop();
-        }
-
-        ret.clear();
-        if (visited[vs.size() - 1]) {
-            std::size_t cur{vs.size() - 1};
-            ret.push_back(cur);
-            while (cur != prev[cur]) {
-                cur = prev[cur];
-                ret.push_back(cur);
-            }
-        }
-        ret.shrink_to_fit();
-        return visited[vs.size() - 1];
-    }
-
-    bool ShortcutGraph::sp_weighted(std::vector<std::size_t>& ret) {
-        std::vector<int> distance(vs.size(), std::numeric_limits<int>::max());
-        std::vector<std::size_t> hops(vs.size(),
-            std::numeric_limits<std::size_t>::max());
-        std::vector<std::size_t> prev(vs.size());
-        std::priority_queue<Edge, std::vector<Edge>,
-            EdgeOrderW<std::greater>> q;
-        prev[0] = 0;
-        distance[0] = 0;
-        hops[0] = 0;
-        q.push({0, distance[0]});
-
-        while (!q.empty()) {
-            auto [cid, cw] = q.top();
-            if (cw <= distance[cid]) {
-                for (auto [n, w]: adj[cid]) {
-                    auto alt = cw + w;
-                    if (alt < distance[n]) {
-                        distance[n] = alt;
-                        prev[n] = cid;
-                        hops[n] = hops[cid] + 1;
-                        q.push({n, alt});
-                    }
-                    else if (alt == distance[n]) {
-                        if (hops[n] > hops[cid] + 1) {
-                            hops[n] = hops[cid] + 1;
-                            prev[n] = cid;
-                            q.push({n, alt});
-                        }
-                    }
-                }
-            }
-            q.pop();
-        }
-
-        ret.clear();
-        if (distance[vs.size() - 1] < std::numeric_limits<int>::max()) {
-            std::size_t cur{vs.size() - 1};
-            ret.push_back(cur);
-            while (cur != prev[cur]) {
-                cur = prev[cur];
-                ret.push_back(cur);
-            }
-        }
-        ret.shrink_to_fit();
-        return ret.size() > 0;
-    }
-
     ShortcutGraph::ShortcutGraph(std::vector<Vertex> const& tr,
             map::Map const& map): vs(tr) {
         for (std::size_t i = 0; i < vs.size() - 1; ++i)
@@ -115,12 +36,8 @@ namespace map {
     void ShortcutGraph::add_single_hops() {
         for (std::size_t i = 0; i < vs.size() - 1; ++i)
             adj[i].insert({i + 1, 1});
-        // added_hops = true;
     }
 
-    // bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret) {
-    //     return added_hops ? sp_weighted(ret) : sp_unweighted(ret);
-    // }
     bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret,
             std::function<bool(std::size_t, std::size_t)> check_hops) {
         std::vector<int> distance(vs.size(), std::numeric_limits<int>::max());
@@ -255,20 +172,6 @@ namespace map {
         }
     }
 
-    // std::pair<bool, Probs> Map::query(Traj const& tr,
-    //         bool intermediate) const {
-    //     if (!intermediate) {
-    //         auto s = tr.front(), e = tr.back();
-    //         return {is_present(s, e), single_query(s, e)};
-    //     }
-
-    //     auto [cov, path] = find_path(tr);
-    //     std::vector<Probs> res;
-    //     for (std::size_t i = 0; i < path.size() - 1; ++i)
-    //         res.push_back(single_query(tr[path[i]], tr[path[i + 1]]));
-    //     return {cov, ::util::sequence(res)};
-    // }
-
     bool Map::covered(Traj const& tr, std::size_t s, std::size_t e,
             Inter use_points) const {
         switch (use_points) {
@@ -290,16 +193,6 @@ namespace map {
             throw std::domain_error("Unhandled value of Inter enum");
         }
     }
-
-    // bool Map::covered(Traj const& tr, std::size_t s, std::size_t e,
-    //         bool intermediate) const {
-    //     if (!intermediate)
-    //         return is_present(tr[s], tr[e]);
-
-    //     ShortcutGraph gr(tr, *this);
-    //     std::vector<std::size_t> ign;
-    //     return gr.shortest_path(ign);
-    // }
 
     double Map::pred_error(Probs const& pred, Traj const& gr) const {
         std::unordered_set<Cell, dp::LocHash> vs;

@@ -72,38 +72,6 @@ namespace map {
         std::vector<Vertex> const& vs;
         /// Directed adjacency list with edge weights.
         std::vector<std::unordered_set<Edge, std::hash<Edge>, EdgeEqualV>> adj;
-        /// Whether we have added single hops.
-        // bool added_hops = false;
-
-        /**
-         * @brief Return the unweighted shortest path from the start to the end
-         * of a trajectory in the shortcut graph, if one exists.
-         *
-         * This function uses BFS from the start vertex; the goal is to find
-         * the maximal subtrajectories that cover the entire trajectory. If the
-         * hops were added that are only covered with bridgelets, you should
-         * use the weighted version instead.
-         * @param ret The shortest sequence of vertices *in reverse order*.
-         * These are indices into `tr` that the graph was constructed with.
-         * @return Whether a path from start to end exists; should always
-         * return `true` if `add_single_hops()` has been called.
-         */
-        bool sp_unweighted(std::vector<std::size_t>& ret);
-
-        /**
-         * @brief Return the weighted shortest path from the start to the end
-         * of a trajectory in the shortcut graph, if one exists.
-         *
-         * This function uses Dijkstra's algorithm from the start vertex; the
-         * goal is to find the minimal-weight path with fewest hops. If the
-         * single hops have been added, we allow the parts for which we have no
-         * data to be filled in using bridgelets, they contribute to weight.
-         * @param ret The shortest sequence of vertices *in reverse order*.
-         * These are indices into `tr` that the graph was constructed with.
-         * @return Whether a path from start to end exists; should always
-         * return `true` if `add_single_hops()` has been called.
-         */
-        bool sp_weighted(std::vector<std::size_t>& ret);
 
     public:
         /**
