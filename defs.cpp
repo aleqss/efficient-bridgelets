@@ -13,6 +13,7 @@
 #include "defs.hpp"
 
 #include <cassert>
+#include <limits>
 #include <type_traits>
 
 namespace dp {
@@ -50,6 +51,12 @@ namespace util {
     double getd(Frac const& fr) {
         return fr.get_d();
     }
+
+    bool can_subtract(Loc const& a, Loc const& b) {
+        auto mxr = std::numeric_limits<Loc>::max();
+        return sign_of(a) == sign_of(b)
+            || (a >= -mxr && b >= -mxr && mxr - absv(a) >= absv(b));
+    }
 }
 
 namespace map {
@@ -69,5 +76,10 @@ namespace map {
         auto const& [t2, x2, y2] = b;
         assert(t2 > t1);
         return {{x1, y1}, {x2, y2}, t2 - t1};
+    }
+
+    Cell meas_to_cell(Meas const& m) {
+        auto const& [t, x, y] = m;
+        return {x, y};
     }
 }

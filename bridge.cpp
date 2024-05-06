@@ -12,8 +12,80 @@
 
 #include "bridge.hpp"
 
+#include <algorithm>
 #include <cassert>
+#include <iterator>
+#include <tuple>
 #include "problems.hpp"
+
+namespace {
+    /**
+     * @brief The enumeration to pick between the x- and y-direction in 2D.
+     */
+    enum class Axis {
+        x, y
+    };
+
+    /**
+     * @brief Record an intersection of a line with a x- or y-cell boundary.
+     */
+    struct LineInt {
+        /// The fraction parameter along the line segment.
+        util::Frac t;
+        /// Whether we cross the boundary in x- or y-direction.
+        Axis dir;
+
+        /**
+         * @brief Compare two intersections based on which is closer to the
+         * start.
+         * @param o The other intersection.
+         * @return True iff this intersection is closer to the start.
+         */
+        bool operator<(LineInt const& o) const {
+            return t < o.t;
+        }
+    };
+
+    /**
+     * @brief Compute, in sorted order, the intersections of the line segment
+     * from `s` to `e` with the cell boundaries, indicating if they are in x-
+     * or in y-direction, so we know the sequence of visited cells.
+     *
+     * Let d = e - s. Note that s and e have integer coordinates. We need to
+     * track intersections of cell boundaries occurring whenever we cross
+     * n + 0.5 for integer n in either x- or y-direction. We can write a line
+     * equation in parametric form as p_x = |s_x| + t * |d_x|, where t ranges
+     * from 0 to 1, and similarly for y. We can iterate over s_x + 0.5 + n,
+     * with n ranging from 0 to |d_x| - 1, and similarly for y, to find the
+     * relevant intersections. So, they occur at t = (n + 0.5) / |d_x|.
+     * We can track them separately for x- and y-axis, then merge the results
+     * in sorted order of t.
+     * @param s The start cell for the line segment.
+     * @param e The end cell for the line segment.
+     * @return The sorted vector of intersections.
+     */
+    std::vector<LineInt> dirs(util::Cell const& s, util::Cell const& e) {
+        auto const& [xs, ys] = s;
+        auto const& [xe, ye] = e;
+
+        assert(util::can_subtract(xe, xs));
+        assert(util::can_subtract(ye, ys));
+        auto const x = static_cast<util::Cnt>(util::absv(xe - xs));
+        auto const y = static_cast<util::Cnt>(util::absv(ye - ys));
+
+        std::vector<LineInt> deltax, deltay;
+        for (util::Cnt n = 0; n < x; ++n)
+            deltax.push_back({util::divide(2 * n + 1, 2 * x), Axis::x});
+        for (util::Cnt n = 0; n < y; ++n)
+            deltay.push_back({util::divide(2 * n + 1, 2 * y), Axis::y});
+
+        std::vector<LineInt> res;
+        res.reserve(deltax.size() + deltay.size());
+        std::merge(deltax.begin(), deltax.end(), deltay.begin(), deltay.end(),
+            std::back_inserter(res));
+        return res;
+    }
+}
 
 namespace util {
     Probs bridgelet(Meas const& s, Meas const& e, bool diag) {
@@ -60,6 +132,26 @@ namespace util {
         Probs res;
         for (auto const& [cell, pr]: pred)
             res[cell] = 1;
+        return res;
+    }
+
+    Probs straight_line(Traj const& tr) {
+        Probs res;
+        res[::map::meas_to_cell(tr.front())] = 1;
+        for (std::size_t i = 0; i < tr.size() - 1; ++i) {
+            Cell cur = ::map::meas_to_cell(tr[i]);
+            Cell const end = ::map::meas_to_cell(tr[i + 1]);
+            auto dx = sign_of(end.first - cur.first);
+            auto dy = sign_of(end.second - cur.second);
+            auto seq = dirs(cur, end);
+            for (auto const& nxt: seq) {
+                if (nxt.dir == Axis::x)
+                    cur.first += dx;
+                else
+                    cur.second += dy;
+                res[cur] = 1;
+            }
+        }
         return res;
     }
 }

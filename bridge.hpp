@@ -13,6 +13,7 @@
 #ifndef BRIDGE_H
 #define BRIDGE_H
 
+#include <cstddef>
 #include <vector>
 #include "defs.hpp"
 
@@ -66,5 +67,13 @@ namespace util {
     Probs average(std::vector<Probs> const& pr_maps);
 
     Probs ignore_pr(Probs const& pred);
+
+    /**
+     * @brief Make a simple straight-line bead following the trajectory.
+     * @param tr The trajectory with possible gaps.
+     * @return The interpolated trajectory, with probability 1 in each relevant
+     * cell.
+     */
+    Probs straight_line(Traj const& tr);
 }
 #endif

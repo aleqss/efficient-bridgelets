@@ -17,7 +17,6 @@
 #include <cstdint>
 #include <gmpxx.h>
 #include <tuple>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -62,7 +61,8 @@ namespace dp {
 }
 
 namespace util {
-    using ::dp::Cell, ::dp::LocHash, ::dp::Visits, ::dp::Cnt;
+    using ::dp::Loc, ::dp::Cell, ::dp::LocHash, ::dp::Visits, ::dp::Cnt;
+    using ::dp::operator""_loc;
     /// Fraction of `Cnt`s.
     using Frac = mpq_class;
     /// Flat DS storing visit probabilities (exactly with GMP).
@@ -93,11 +93,37 @@ namespace util {
      * @return The closest representation of `fr`.
      */
     double getd(Frac const& fr);
+
+    /**
+     * @brief Return the sign of the value.
+     * @param val The possibly negative value.
+     * @return -1 for a negative value, 1 for a non-negative value.
+     */
+    inline Loc sign_of(Loc const& val) {
+        return val < 0 ? -1_loc : 1_loc;
+    }
+
+    /**
+     * @brief Compute the absolute value.
+     * @param val The possibly negative value.
+     * @return |val| without overflow handling.
+     */
+    inline Loc absv(Loc const& val) {
+        return val < 0 ? -val : val;
+    }
+
+    /**
+     * @brief Check that a - b does not overflow.
+     * @param a The minuend.
+     * @param b The subtrahend.
+     * @return False iff the difference overflows.
+     */
+    [[maybe_unused]] bool can_subtract(Loc const& a, Loc const& b);
 }
 
 namespace map {
-    using ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::Cnt, ::dp::Visits,
-        ::util::Frac, ::util::Probs;
+    using ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::Visits, ::util::Frac,
+        ::util::Probs;
     /// Measurement: discrete location with a timestamp.
     using Meas = std::tuple<Time, Loc, Loc>;
     /// Trajectory: sequence of measurements.
@@ -121,5 +147,12 @@ namespace map {
      * @return The bridge ID for going from `a` to `b` in correct time.
      */
     BridgeID to_bridge_id(Meas const& a, Meas const& b);
+
+    /**
+     * @brief Convert a measurement (with time) to a cell (ignoring time).
+     * @param The measurement (t, x, y).
+     * @return The cell (x, y).
+     */
+    Cell meas_to_cell(Meas const& m);
 }
 #endif
