@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Compute visit counts and generate paths (use the DP).
+ * @author Aleksandr Popov
+ * @date 2022, 2024
+ * @copyright GNU GPLv3
+ */
+
 #ifndef PROBLEMS_H
 #define PROBLEMS_H
 
@@ -18,55 +26,59 @@
 #include "defs.hpp"
 #include "dp.hpp"
 
+/**
+ * @brief Problems: how we use the DP.
+ */
 namespace prob {
-    using ::dp::DP, ::dp::Blocked, ::dp::Loc, ::dp::Time, ::dp::Cell,
-        ::dp::Cnt;
     /**
-     * @brief For all possible coordinates (x, y) and for all time steps
-     * 0 <= t <= T, count the paths from `start` to (x, y) in t steps.
+     * @brief For all possible coordinates \f$(x, y)\f$ and for all time steps
+     * \f$0 \le t \le T\f$, count the paths from @p start to \f$(x, y)\f$ in
+     * \f$t\f$ steps.
      * @param T The maximum number of steps / time limit.
      * @param start The origin, from which we start the paths.
      * @param blocked The set of blocked cells, none by default.
      * @param diag Whether to allow diagonal movement.
-     * @return An instance of `DP` with the counts, accessible with
+     * @return An instance of `dp::DP` with the counts, accessible with
      * `at(x, y, t)`.
      */
-    DP all_paths(Time T, Cell start,
-        std::unordered_set<Blocked> const& blocked = {}, bool diag = false);
+    dp::DP all_paths(Time T, Cell start,
+        std::unordered_set<dp::Blocked> const& blocked = {},
+        bool diag = false);
 
     /**
-     * @brief For all possible coordinates (x, y) and for all time steps
-     * 0 <= t <= T, count the paths from `start` to `end` through (x, y) in t
-     * steps.
-     * 
-     * If needed, call `flatten` on the returned DP to obtain the visit counts
-     * for (x, y), accessed with `[{x, y}]`.
+     * @brief For all possible coordinates \f$(x, y)\f$ and for all time steps
+     * \f$0 \le t \le T\f$, count the paths from @p start to @p end through
+     * \f$(x, y)\f$ in \f$t\f$ steps.
+     *
+     * If needed, call `dp::DP::flatten()` on the returned DP to obtain the
+     * visit counts for \f$(x, y)\f$, accessed with `[{x, y}]`.
      * @param T The maximum number of steps / time limit.
      * @param start The origin, from which we start the paths.
      * @param end The final point of the paths.
      * @param diag Whether to allow diagonal movement.
-     * @return An instance of `DP` with the counts, accessible with
+     * @return An instance of `dp::DP` with the counts, accessible with
      * `at(x, y, t)`.
      */
-    DP visit_all(Time T, Cell start, Cell end, bool diag = false);
+    dp::DP visit_all(Time T, Cell start, Cell end, bool diag = false);
 
     /**
-     * @brief Generate a path from the origin of the DP to `end` according to
-     * the probabilities inferred from `paths` in `T` steps.
-     * 
-     * Generate a random trajectory of exactly length `T` from origin to `end`,
-     * if it is possible. The `paths` DP should be the output of `all_paths`
-     * with the same or larger `T`. We assume that the path can only move to
-     * neighbouring nodes in one time step, so this does not yet work when
-     * diagonal movement is allowed.
+     * @brief Generate a path from the origin of the DP to @p end according to
+     * the probabilities inferred from @p paths in @p T steps.
+     *
+     * Generate a random trajectory of exactly length @p T from origin to
+     * @p end, if it is possible. The @p paths DP should be the output of
+     * `all_paths()` with the same or larger @p T.
+     * @remark We assume that the path can only move to neighbouring nodes in
+     * one time step, so this does not yet work when diagonal movement is
+     * allowed.
      * @param T The number of time steps in the trajectory.
      * @param paths The DP for computing all paths.
      * @param end The endpoint of the generated trajectories.
-     * @return A generated trajectory according to path counts in `paths`, so
-     * the kth item is the (i, j)-coordinate at time k; or an empty trajectory
-     * if the path is impossible.
+     * @return A generated trajectory according to path counts in @p paths, so
+     * the \f$k\f$-th item is the \f$(i, j)\f$-coordinate at time \f$k\f$; or
+     * an empty trajectory if the path is impossible.
      */
-    std::vector<Cell> generate_path(Time const& T, DP const& paths,
+    std::vector<Cell> generate_path(Time const& T, dp::DP const& paths,
         Cell const& end);
 }
 #endif

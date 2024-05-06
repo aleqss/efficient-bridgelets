@@ -10,41 +10,50 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Explicit computation of visit counts (inefficient).
+ * @author Aleksandr Popov
+ * @date 2022, 2024
+ * @copyright GNU GPLv3
+ */
+
 #ifndef EXPLICIT_H
 #define EXPLICIT_H
 
 #include <unordered_map>
-#include <unordered_set>
 #include "defs.hpp"
 
+/**
+ * @brief Explicit computation of visit counts.
+ */
 namespace xpl {
-    using ::dp::Cnt, ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::LocHash;
+    /// Map from locations to counts.
     using Table = std::unordered_map<Cell, Cnt, LocHash>;
-    using PList = std::unordered_set<Cell, LocHash>;
 
     /**
-     * @brief For all possible coordinates (x, y), count the paths from `shift`
-     * to (x, y) in `T` steps.
+     * @brief For all possible coordinates \f$(x, y)\f$, count the paths from
+     * @p shift to \f$(x, y)\f$ in @p T steps.
      *
-     * Unlike `DP`, no information about intermediate time steps is available.
-     * Note: this runs in O(5^T) time, use the DP instead.
+     * Unlike `dp::DP`, no information about intermediate time steps is
+     * available.
+     * @warning This runs in \f$O(5^T)\f$ time, use `dp::DP` instead.
      * @param T The maximum number of steps / time limit.
      * @param shift The origin, from which we start the paths.
-     * @return An instance of `Table` with the counts, each associated with a
-     * location (x, y).
+     * @return An instance of `::Table` with the counts, each associated with a
+     * location \f$(x, y)\f$.
      */
     Table compute_paths(Time const& T, Cell const& shift);
 
     /**
-     * @brief For all possible coordinates (x, y), count the paths from `shift`
-     * to `end` in `T` steps that visit (x, y).
-     *
-     * Note: this runs in O(5^T) time, use the DP instead.
+     * @brief For all possible coordinates \f$(x, y)\f$, count the paths from
+     * @p shift to @p end in @p T steps that visit \f$(x, y)\f$.
+     * @warning This runs in \f$O(5^T)\f$ time, use `dp::DP` instead.
      * @param T The maximum number of steps / time limit.
      * @param shift The origin, from which we start the paths.
      * @param end The path destination.
-     * @return An instance of `Table` with the counts, each associated with a
-     * location (x, y).
+     * @return An instance of `::Table` with the counts, each associated with a
+     * location \f$(x, y)\f$.
      */
     Table visits(Time const& T, Cell const& shift, Cell const& end);
 }

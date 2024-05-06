@@ -10,10 +10,29 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Explicit computation of visit counts (inefficient): implemented.
+ * @author Aleksandr Popov
+ * @date 2022, 2024
+ * @copyright GNU GPLv3
+ */
+
 #include "explicit.hpp"
 
+#include <unordered_set>
+
 namespace {
-    using ::xpl::Cnt, ::xpl::Loc, ::xpl::Time, ::dp::Cell, ::xpl::PList;
+    using namespace dtypes;
+    /// A set of cells.
+    using PList = std::unordered_set<Cell, LocHash>;
+
+    /**
+     * @brief Decode a @p move number into a path from the origin.
+     * @param move The path descriptor.
+     * @param res The output containing the visited cells.
+     * @return The final cell.
+     */
     Cell decode(Cnt move, PList& res) {
         res.clear();
         Loc x = 0, y = 0;
@@ -35,6 +54,11 @@ namespace {
         return {x, y};
     }
 
+    /**
+     * @brief Generate the count of distinct paths in time @p T.
+     * @param T The time.
+     * @return \f$5^T - 1\f$.
+     */
     Cnt max_num(Time const& T) {
         Cnt res;
         mpz_ui_pow_ui(res.get_mpz_t(), 5, T);

@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Basic definitions and data types.
+ * @author Aleksandr Popov
+ * @date 2022--2024
+ * @copyright GNU GPLv3
+ */
+
 #ifndef DEFS_H
 #define DEFS_H
 
@@ -27,9 +35,15 @@
  * function, and divide should return `res.get_d();` instead.
  * Also, adapt `decode` and `max_num` in explicit.cpp.
  */
-namespace dp {
+
+/**
+ * @brief Data type definitions.
+ */
+namespace dtypes {
     /// Count in a cell.
     using Cnt = mpz_class;
+    /// Fraction of `Cnt`s.
+    using Frac = mpq_class;
     /// Time steps.
     using Time = std::uint32_t;
     /// Discrete x/y coordinate.
@@ -46,33 +60,62 @@ namespace dp {
     std::size_t hash_helper(Loc a, Loc b) noexcept;
 
     /**
-     * Hasher for std::unordered_map of coordinate pairs.
+     * @brief Hasher for `std::unordered_map` of coordinate pairs.
      */
     struct LocHash {
+        /**
+         * @brief Hash function.
+         * @param p A cell.
+         * @return A valid hash for a cell.
+         */
         std::size_t operator()(Cell const& p) const noexcept;
     };
 
     /// Flat DS storing visit counts to specific cells.
     using Visits = std::unordered_map<Cell, Cnt, LocHash>;
-
-    /**
-     * Literal of type Loc.
-     */
-    Loc operator ""_loc(unsigned long long l);
-}
-
-namespace util {
-    using ::dp::Loc, ::dp::Cell, ::dp::LocHash, ::dp::Visits, ::dp::Cnt;
-    using ::dp::operator""_loc;
-    /// Fraction of `Cnt`s.
-    using Frac = mpq_class;
     /// Flat DS storing visit probabilities (exactly with GMP).
     using Probs = std::unordered_map<Cell, Frac, LocHash>;
 
     /**
-     * @brief Normalise a `Visits` map to the value in the cell `s`.
+     * @brief Define a literal of type `Loc`.
+     * @param l The literal.
+     * @return The literal of type `Loc`.
+     */
+    Loc operator ""_loc(unsigned long long l);
+
+    /// Measurement: discrete location with a timestamp.
+    using Meas = std::tuple<Time, Loc, Loc>;
+    /// Trajectory: sequence of measurements.
+    using Traj = std::vector<Meas>;
+    /// Identifier for bridges: start, end, and duration.
+    using BridgeID = std::tuple<Cell, Cell, Time>;
+    /// Identifier for subtrajectories: trajectory ID, start, and end indices.
+    using SubTraj = std::tuple<std::uint32_t, std::size_t, std::size_t>;
+}
+
+namespace dp {
+    using namespace dtypes;
+}
+
+namespace xpl {
+    using namespace dtypes;
+}
+
+namespace io {
+    using namespace dtypes;
+}
+
+namespace prob {
+    using namespace dtypes;
+}
+
+namespace util {
+    using namespace dtypes;
+
+    /**
+     * @brief Normalise a `dp::Visits` map to the value in the cell @p s.
      * @param v A valid visit count map, like the one returned by
-     * `dp::DP::flatten`.
+     * `dp::DP::flatten()`.
      * @param s The start cell whose value should be normalised to 1.
      * @return The normalised map (using fractions currently).
      */
@@ -83,7 +126,7 @@ namespace util {
      * division, going through `mpq_class`.
      * @param num The numerator.
      * @param den The denominator.
-     * @return `num` / `den`.
+     * @return @p num / @p den.
      */
     Frac divide(Cnt const& num, Cnt const& den);
 
@@ -91,7 +134,7 @@ namespace util {
      * @brief For GMP fractions, we need to call a special functions to
      * approximately convert them to `double`.
      * @param fr The fraction.
-     * @return The closest representation of `fr`.
+     * @return The closest representation of @p fr.
      */
     double getd(Frac const& fr);
 
@@ -107,14 +150,14 @@ namespace util {
     /**
      * @brief Compute the absolute value.
      * @param val The possibly negative value.
-     * @return |val| without overflow handling.
+     * @return |@p val| without overflow handling.
      */
     inline Loc absv(Loc const& val) {
         return val < 0 ? -val : val;
     }
 
     /**
-     * @brief Check that a - b does not overflow.
+     * @brief Check that @p a - @p b does not overflow.
      * @param a The minuend.
      * @param b The subtrahend.
      * @return False iff the difference overflows.
@@ -123,36 +166,32 @@ namespace util {
 }
 
 namespace map {
-    using ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::Visits, ::util::Frac,
-        ::util::Probs;
-    /// Measurement: discrete location with a timestamp.
-    using Meas = std::tuple<Time, Loc, Loc>;
-    /// Trajectory: sequence of measurements.
-    using Traj = std::vector<Meas>;
-    /// Identifier for bridges: start, end, and duration.
-    using BridgeID = std::tuple<Cell, Cell, Time>;
-    /// Identifier for subtrajectories: trajectory ID, start, and end indices.
-    using SubTraj = std::tuple<std::uint32_t, std::size_t, std::size_t>;
+    using namespace dtypes;
 
     /**
-     * Hasher for std::undordered_map of bridge identifiers.
+     * @brief Hasher for `std::unordered_map` of bridge identifiers.
      */
     struct TrajHash {
+        /**
+         * @brief Hash function.
+         * @param t The bridge ID.
+         * @return A valid hash.
+         */
         std::size_t operator()(BridgeID const& t) const noexcept;
     };
 
     /**
-     * @brief Get a bridge ID when going from `a` to `b`.
+     * @brief Get a bridge ID when going from @p a to @p b.
      * @param a The start of the bridge.
      * @param b The end of the bridge.
-     * @return The bridge ID for going from `a` to `b` in correct time.
+     * @return The bridge ID for going from @p a to @p b in correct time.
      */
     BridgeID to_bridge_id(Meas const& a, Meas const& b);
 
     /**
      * @brief Convert a measurement (with time) to a cell (ignoring time).
-     * @param The measurement (t, x, y).
-     * @return The cell (x, y).
+     * @param m The measurement \f$(t, x, y)\f$.
+     * @return The cell \f$(x, y)\f$.
      */
     Cell meas_to_cell(Meas const& m);
 }

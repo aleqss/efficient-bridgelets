@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Main file, driving all the functionality.
+ * @author Aleksandr Popov
+ * @date 2022, 2024
+ * @copyright GNU GPLv3
+ */
+
 #include <cassert>
 #include <chrono>
 #include <filesystem>
@@ -72,13 +80,14 @@ namespace {
     }
 
     /**
-     * @brief Check if the path counts at time T match up for the DP and the
+     * @brief Check if the path counts at time @p T match up for the DP and the
      * explicit computation.
-     * @param T The T of the explicit computation, not larger than T of DP.
+     * @param T The \f$T\f$ of the explicit computation, not larger than
+     * \f$T\f$ of DP.
      * @param a The DP.
      * @param b The explicit table.
-     * @param shift The start point of both `a` and `b`.
-     * @return "correct" if the counts match, "mismatch" otherwise.
+     * @param shift The start point of both @p a and @p b.
+     * @return Whether the counts match.
      */
     bool check_paths(dp::Time const& T, dp::DP const& a,
             xpl::Table const& b, std::pair<dp::Loc, dp::Loc> const& shift) {
@@ -101,7 +110,7 @@ namespace {
      * @param T The T of both the explicit computation and the DP.
      * @param a The DP.
      * @param b The explicit table.
-     * @return "correct" if the counts match, "mismatch" otherwise.
+     * @return Whether if the counts match.
      */
     bool check_visits(dp::Time const& T, dp::DP const& a,
             xpl::Table const& b) {
@@ -137,7 +146,7 @@ namespace {
         using ms = std::chrono::milliseconds;
         using dp::operator""_loc;
         std::cout << "Part 1: timing\nWe run the DP and the naive version, "
-            "comparing the time to compute all\npaths and to compute the paths"
+            "comparing the time to compute all paths\nand to compute the paths"
             " that visit a location.\n\n";
         dp::Time T1, T2;
         std::ostringstream wr_time;
@@ -346,11 +355,11 @@ namespace {
     /**
      * @brief Compute the median of the vector elements.
      * @param vec The vector.
-     * @param comp The less-than function for the elements of type `T`.
+     * @param comp The less-than function for the elements of type @p T.
      * @param ext The extractor that gets the value to use for the median
-     * computation from an element of type `T`.
-     * @return The median of the elements of `vec`, extracted using `ext`,
-     * where the ordering is defined by `comp`.
+     * computation from an element of type @p T.
+     * @return The median of the elements of @p vec, extracted using @p ext,
+     * where the ordering is defined by @p comp.
      */
     template <typename T, typename Comp, typename Ext>
     double median(std::vector<T>& vec, Comp comp, Ext ext) {
@@ -376,19 +385,27 @@ namespace {
             [](T const& t) { return t; });
     }
 
+    /**
+     * @brief Select points for the baseline comparison.
+     * @remark Right now `Inter::few` and `Inter::most` do not have a
+     * satisfactory sequence, defaulting to no and all intermediate points,
+     * respectively.
+     * @param tr The test trajectory as given to our approach.
+     * @param use_points How the intermediate points are used in our approach.
+     * @return The most relevant subsequence of the points.
+     */
     map::Traj select_points(map::Traj const& tr, map::Map::Inter use_points) {
         if (tr.size() < 2)
             return tr;
         switch (use_points) {
         case map::Map::Inter::none:
-            return {tr.front(), tr.back()};
         case map::Map::Inter::few:
+            return {tr.front(), tr.back()};
         case map::Map::Inter::most:
-            return {}; // Figure this out.
         case map::Map::Inter::all:
             return tr;
         default:
-            throw std::domain_error("Unhandled value of Inter enum");
+            throw std::domain_error("Unhandled value of Inter enum.");
         }
     }
 
@@ -448,7 +465,8 @@ namespace {
         std::cout << "Testing trajectories.\n\n";
         std::ofstream stats(fname / "stats.txt");
         std::ifstream testlist(fname / "test.txt");
-        std::vector<PBD> err, err_learned, err_naive;
+        std::vector<PBD> err, err_learned, err_naive, err_naiver, err_straight;
+
         auto testfiles = io::read_flist(testlist);
         for (auto const& test_id: testfiles) {
             std::ifstream testf(fname / std::to_string(test_id));
@@ -460,17 +478,21 @@ namespace {
 
             auto naive = select_points(sparse ? io::sparsify(ground) : ground,
                 use_points);
-            auto e_naive = reg.pred_error(util::bridge(naive, 0,
-                naive.size() - 1, diag), ground);
+            auto pr_naive = util::bridge(naive, 0, naive.size() - 1, diag);
+            auto e_naive = reg.pred_error(pr_naive, ground);
+            auto e_naiver = reg.pred_error(util::ignore_pr(pr_naive), ground);
             // auto [c, e] = reg.query_error(
             //     sparse ? io::sparsify(ground) : ground, ground, use_points);
+
             stats << test_id << ' ' << c << ' ' << e << ' ' << e_learned << ' '
-                << e_naive << '\n';
+                << e_naive << ' ' << e_naiver << '\n';
             err.emplace_back(c, e);
             err_learned.emplace_back(c, e_learned);
             err_naive.emplace_back(c, e_naive);
+            err_naiver.emplace_back(c, e_naiver);
         }
-        std::vector<decltype(err)> it{err, err_learned, err_naive};
+
+        std::vector<decltype(err)> it{err, err_learned, err_naive, err_naiver};
         for (auto& errors: it) {
             std::vector<double> cov, uncov;
             for (auto const& [c, e]: errors) {
@@ -484,21 +506,25 @@ namespace {
                 [](PBD const& p) {return p.second;});
             auto med_cov = median(cov);
             auto med_uncov = median(uncov);
-            std::cout << "Median errors:\nCovered: " << med_cov << "\nUncovered: "
-                << med_uncov << "\nTotal: " << med << '\n';
+            std::cout << "Median errors:\nCovered: " << med_cov
+                << "\nUncovered: " << med_uncov << "\nTotal: " << med << '\n';
         }
     }
 }
 
 /**
  * @brief Drive the program capabilities appropriately.
+ * @return Exit code.
  */
 int main() {
+    static_assert(-1 == ~0, "Exotic!");
+    static_assert(std::numeric_limits<double>::is_iec559, "Things may break.");
+
     do {
         char answer;
         read_flag("Welcome! Do you want to run the exploration mode (e), to "
-            "compute the visit counts (v), or to run the training and testing "
-            "with the map (m)? [e/v/m]", "Please type e, v, or m.",
+            "compute the visit\ncounts (v), or to run the training and testing"
+            " with the map (m)? [e/v/m]", "Please type e, v, or m.",
             [](char a) {
                 return a == 'e' || a == 'v' || a == 'm';
             }, answer);

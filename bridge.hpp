@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Bridgelets, bridges, and beads.
+ * @author Aleksandr Popov
+ * @date 2024
+ * @copyright GNU GPLv3
+ */
+
 #ifndef BRIDGE_H
 #define BRIDGE_H
 
@@ -17,11 +25,14 @@
 #include <vector>
 #include "defs.hpp"
 
+/**
+ * @brief Utilities, centred on bridge computations.
+ */
 namespace util {
     using ::map::Meas, ::map::Traj;
 
     /**
-     * @brief Compute the visit probabilities of a bridgelet from `s` to `e`.
+     * @brief Compute the visit probabilities of a bridgelet from @p s to @p e.
      * @param s The starting point \f$(t_1, x_1, y_1)\f$ of a bridgelet.
      * @param e The endpoint \f$(t_2, x_2, y_2)\f$ of a bridgelet.
      * @param diag Whether to allow diagonal movement.
@@ -32,12 +43,12 @@ namespace util {
 
     /**
      * @brief Combine a sequence of bridgelets or partial bridges.
-     * 
+     *
      * We can use the formula as in the paper:
      * \f$P(v \mid W_1\cdots W_n) = 1 - \prod_{i = 1}^n (1 - P(v \mid W_i))\f$.
      * To compute this incrementally, we can observe that
-     * \f$P(v \mid W_1 \cdots W_i) = 1 - (1 - P(v \mid W_1 \cdots W_{i - 1}))
-     * \cdot (1 - P(v \mid W_i))\f$.
+     * \f[P(v \mid W_1 \cdots W_i) = 1 - (1 - P(v \mid W_1 \cdots W_{i - 1}))
+     * \cdot (1 - P(v \mid W_i)).\f]
      * Also note that if \f$P(v \mid W_i) = 0\f$, the result stays unchanged.
      * Finally, we can start with \f$W_0\f$ that is zero-initialised to always
      * use the incremental formula.
@@ -58,9 +69,10 @@ namespace util {
         bool diag = false);
 
     /**
-     * @brief Average several visit probability maps. This is only meaningful
-     * if they correspond to several trajectories with the same start and end
-     * points and the same length.
+     * @brief Average several visit probability maps.
+     *
+     * This is only meaningful if they correspond to several trajectories with
+     * the same start and end points and the same length.
      * @param pr_maps The collection of visit probability maps.
      * @return The averaged visit probability map.
      */

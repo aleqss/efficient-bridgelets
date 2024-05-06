@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Implementation related to the grid.
+ * @author Aleksandr Popov
+ * @date 2023, 2024
+ * @copyright GNU GPLv3
+ */
+
 #include "map.hpp"
 
 #include <cassert>
@@ -36,6 +44,7 @@ namespace map {
     void ShortcutGraph::add_single_hops() {
         for (std::size_t i = 0; i < vs.size() - 1; ++i)
             adj[i].insert({i + 1, 1});
+        // Insert will silently fail if {i + 1, 0} exists in the set.
     }
 
     bool ShortcutGraph::shortest_path(std::vector<std::size_t>& ret,
@@ -109,7 +118,7 @@ namespace map {
             break;
         default:
             throw std::domain_error("No path to find when using all or no "
-                "intermediate points");
+                "intermediate points.");
         }
 
         ShortcutGraph sg(tr, *this);
@@ -168,7 +177,7 @@ namespace map {
             return {allc, ::util::sequence(res)};
         }
         default:
-            throw std::domain_error("Unhandled value of Inter enum");
+            throw std::domain_error("Unhandled value of Inter enum.");
         }
     }
 
@@ -190,7 +199,7 @@ namespace map {
             return cov;
         }
         default:
-            throw std::domain_error("Unhandled value of Inter enum");
+            throw std::domain_error("Unhandled value of Inter enum.");
         }
     }
 
@@ -225,6 +234,7 @@ namespace map {
         std::uint32_t trid;
         std::size_t start, end;
         while (std::getline(inf, istr)) {
+            line.clear();
             line.str(std::move(istr));
             line >> x1 >> y1 >> x2 >> y2 >> t;
             while (line >> trid) {

@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief I/O implementation.
+ * @author Aleksandr Popov
+ * @date 2023, 2024
+ * @copyright GNU GPLv3
+ */
+
 #include "io.hpp"
 
 #include <cassert>
@@ -23,7 +31,7 @@
 #include "dp.hpp"
 
 namespace io {
-    void dp_write(DP const& table, Time const& T, Cell const& shift,
+    void dp_write(dp::DP const& table, Time const& T, Cell const& shift,
             std::ostream& outf) {
         auto [is, js] = shift;
         auto sT = static_cast<Loc>(T);
@@ -34,7 +42,7 @@ namespace io {
         outf.flush();
     }
 
-    void flat_write(DP const& table, Time const& T, Cell const& shift,
+    void flat_write(dp::DP const& table, Time const& T, Cell const& shift,
             std::ostream& outf) {
         auto fl_table = table.flatten(T);
         auto [is, js] = shift;

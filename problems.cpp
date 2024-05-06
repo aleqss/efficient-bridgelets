@@ -10,31 +10,39 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Compute visit counts and generate paths: implementation.
+ * @author Aleksandr Popov
+ * @date 2022, 2024
+ * @copyright GNU GPLv3
+ */
+
 #include "problems.hpp"
 
 #include <random>
 #include <utility>
 
 namespace prob {
-    DP all_paths(Time T, Cell start,
-            std::unordered_set<Blocked> const& blocked, bool diag) {
+    dp::DP all_paths(Time T, Cell start,
+            std::unordered_set<dp::Blocked> const& blocked, bool diag) {
         auto prop = diag ? dp::uniform_diag_prop : dp::uniform_prop;
-        DP res(std::move(T), prop, std::move(start), blocked, diag);
+        dp::DP res(std::move(T), prop, std::move(start), blocked, diag);
         return res;
     }
 
-    DP visit_all(Time T, Cell start, Cell end, bool diag) {
+    dp::DP visit_all(Time T, Cell start, Cell end, bool diag) {
         auto prop = diag ? dp::uniform_diag_prop : dp::uniform_prop;
-        DP first_visit(T, prop, {0, 0}, {{0, 0, 1}}, diag);
+        dp::DP first_visit(T, prop, {0, 0}, {{0, 0, 1}}, diag);
         first_visit.set_shift(std::move(start));
         first_visit.flip_coords();
-        DP rest(std::move(T), prop, {0, 0}, {}, diag);
+        dp::DP rest(std::move(T), prop, {0, 0}, {}, diag);
         rest.flip_time();
         rest.set_shift(std::move(end));
         return first_visit * rest;
     }
 
-    std::vector<Cell> generate_path(Time const& T, DP const& paths,
+    std::vector<Cell> generate_path(Time const& T, dp::DP const& paths,
             Cell const& end) {
         auto [ci, cj] = end;
         if (paths.at(ci, cj, T) == 0)

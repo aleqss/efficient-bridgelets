@@ -10,13 +10,21 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Basic definitions and data types implemented.
+ * @author Aleksandr Popov
+ * @date 2022--2024
+ * @copyright GNU GPLv3
+ */
+
 #include "defs.hpp"
 
 #include <cassert>
 #include <limits>
 #include <type_traits>
 
-namespace dp {
+namespace dtypes {
     std::size_t hash_helper(Loc a, Loc b) noexcept {
         auto i = static_cast<std::make_unsigned_t<Loc>>(a);
         auto j = static_cast<decltype(i)>(b);

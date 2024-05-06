@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Bridgelets, bridges, and beads: implementations.
+ * @author Aleksandr Popov
+ * @date 2024
+ * @copyright GNU GPLv3
+ */
+
 #include "bridge.hpp"
 
 #include <algorithm>
@@ -48,18 +56,22 @@ namespace {
 
     /**
      * @brief Compute, in sorted order, the intersections of the line segment
-     * from `s` to `e` with the cell boundaries, indicating if they are in x-
+     * from @p s to @p e with the cell boundaries, indicating if they are in x-
      * or in y-direction, so we know the sequence of visited cells.
      *
-     * Let d = e - s. Note that s and e have integer coordinates. We need to
-     * track intersections of cell boundaries occurring whenever we cross
-     * n + 0.5 for integer n in either x- or y-direction. We can write a line
-     * equation in parametric form as p_x = |s_x| + t * |d_x|, where t ranges
-     * from 0 to 1, and similarly for y. We can iterate over s_x + 0.5 + n,
-     * with n ranging from 0 to |d_x| - 1, and similarly for y, to find the
-     * relevant intersections. So, they occur at t = (n + 0.5) / |d_x|.
+     * Let \f$\mathbf{d} = \mathbf{e} - \mathbf{s}\f$. Note that
+     * \f$\mathbf{s}\f$ and \f$\mathbf{e}\f$ have integer coordinates. We need
+     * to track intersections of cell boundaries occurring whenever we cross
+     * \f$n + 0.5\f$ for integer \f$n\f$ in either x- or y-direction.
+     *
+     * We can write a line equation in parametric form as
+     * \f$p_x = \lvert s_x\rvert + t \cdot \lvert d_x\rvert\f$, where \f$t\f$
+     * ranges from \f$0\f$ to \f$1\f$, and similarly for y. We can iterate over
+     * \f$s_x + 0.5 + n\f$, with \f$n\f$ ranging from \f$0\f$ to
+     * \f$\lvert d_x\rvert - 1\f$, and similarly for y, to find the relevant
+     * intersections. So, they occur at \f$t = (n + 0.5) / \lvert d_x\rvert\f$.
      * We can track them separately for x- and y-axis, then merge the results
-     * in sorted order of t.
+     * in sorted order of \f$t\f$.
      * @param s The start cell for the line segment.
      * @param e The end cell for the line segment.
      * @return The sorted vector of intersections.

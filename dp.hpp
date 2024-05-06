@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief Dynamic program for computing visit counts.
+ * @author Aleksandr Popov
+ * @date 2022--2024
+ * @copyright GNU GPLv3
+ */
+
 #ifndef DP_H
 #define DP_H
 
@@ -19,13 +27,18 @@
 #include <vector>
 #include "defs.hpp"
 
+/**
+ * @brief Everything related to the dynamic program for visit counts.
+ */
 namespace dp {
     /**
-     * The description of a blocked cell.
+     * @brief The description of a blocked cell.
      */
     struct Blocked {
-        /// The location of the blocked cell.
-        Loc i, j;
+        /// The location of the blocked cell: x-coordinate.
+        Loc i;
+        /// The location of the blocked cell: y-coordinate.
+        Loc j;
         /// The step from which the cell is blocked.
         Time start;
 
@@ -41,26 +54,30 @@ namespace dp {
          * @brief Compare the encoded locations of two instances (time is not
          * taken into account).
          * @param o The other instance.
-         * @return `true` iff (i, j) = (o.i, o.j).
+         * @return `true` iff \f$(i, j) = (o.i, o.j)\f$.
          */
         bool operator==(Blocked const& o) const;
     };
 }
 
-// Specialise std::hash to dp::Blocked for use in unordered_set.
-namespace std {
-    template<> struct hash<::dp::Blocked> {
-        size_t operator()(::dp::Blocked const& t) const noexcept {
-            return ::dp::hash_helper(t.i, t.j);
-        }
-    };
-}
+/// Specialise `std::hash` to `dp::Blocked` for use in `std::unordered_set`.
+template<> struct std::hash<::dp::Blocked> {
+    /**
+     * @brief Hash operator.
+     * @param t Blocked cell.
+     * @return A valid hash value.
+     */
+    size_t operator()(::dp::Blocked const& t) const noexcept {
+        return ::dp::hash_helper(t.i, t.j);
+    }
+};
 
 namespace dp {
     /**
-     * The dynamic program for computing paths with blocked cells, including
-     * access functions and simple operations: shifting, flipping time,
-     * combining with another DP.
+     * @brief The dynamic program for computing paths with blocked cells.
+     *
+     * Includes access functions and simple operations: shifting, flipping
+     * time, combining with another DP.
      */
     class DP {
         /// The maximum number of steps from (0, 0).
@@ -95,8 +112,8 @@ namespace dp {
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return True iff t <= T, |i| + |j| <= t, after shift, and the cell
-         * is not blocked at this time.
+         * @return True iff \f$t \le T\f$, \f$|i| + |j| \le t\f$, after shift,
+         * and the cell is not blocked at this time.
          */
         bool test_index_sp(Loc const& i, Loc const& j, Time const& t) const;
 
@@ -106,8 +123,8 @@ namespace dp {
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return True iff t <= T, -T <= i, j <= T, after shift, and the cell
-         * is not blocked at this time.
+         * @return True iff \f$t \le T\f$, \f$-T \le i, j \le T\f$, after
+         * shift, and the cell is not blocked at this time.
          */
         bool test_index_dn(Loc const& i, Loc const& j, Time const& t) const;
 
@@ -117,7 +134,7 @@ namespace dp {
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return The index in table that maps to (i, j, t).
+         * @return The index in `DP.table` that maps to \f$(i, j, t)\f$.
          */
         std::size_t index(Loc const& i, Loc const& j, Time const& t) const;
 
@@ -126,19 +143,24 @@ namespace dp {
          * for sparse storage.
          *
          * We only store entries that may be non-zero. In each time slice, we
-         * only store the non-empty diamond, depending on t.
-         * In layer t, there are 1 + 2t(t + 1) entries. The index of the layer
-         * t can be computed as the sum of the element count in the previous
-         * layers, yielding t^2 + (t - 1)t(2t - 1)/3.
-         * To find the index within a layer, let x = t - |i|.
-         * For i <= 0, index of row i is x^2; centre of row i is x(x + 1).
-         * For i > 0, the last index in the layer is 2t(t + 1); count backwards
-         * from it to get centre of row i at 2t(t + 1) - x(x + 1).
-         * Within the row, shift by j to get the final index.
+         * only store the non-empty diamond, depending on \f$t\f$.
+         * In layer \f$t\f$, there are \f$1 + 2t(t + 1)\f$ entries. The index
+         * of the layer \f$t\f$ can be computed as the sum of the element
+         * counts in the previous layers, yielding
+         * \f$t^2 + (t - 1)t(2t - 1)/3\f$.
+         *
+         * To find the index within a layer, let \f$x = t - |i|\f$.
+         * - For \f$i \le 0\f$, index of row \f$i\f$ is \f$x^2\f$; centre of
+         * row \f$i\f$ is \f$x(x + 1)\f$.
+         * - For \f$i > 0\f$, the last index in the layer is \f$2t(t + 1)\f$;
+         * count backwards from it to get centre of row \f$i\f$ at
+         * \f$2t(t + 1) - x(x + 1)\f$.
+         *
+         * Within the row, shift by \f$j\f$ to get the final index.
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return The index in `table` that maps to (i, j, t).
+         * @return The index in `DP.table` that maps to \f$(i, j, t)\f$.
          */
         std::size_t index_sp(Loc const& i, Loc const& j, Time const& t) const;
 
@@ -147,21 +169,23 @@ namespace dp {
          * for dense storage.
          *
          * We store the entire hyperrectangle with dimensions
-         * (T + 1) * (2T + 1)^2. The indexing is standard:
-         * t * (2T + 1)^2 + i * (2T + 1) + j.
+         * \f$(T + 1) * (2T + 1)^2\f$. The indexing is standard:
+         * \f$t * (2T + 1)^2 + i * (2T + 1) + j\f$.
          * @param i First dimension.
          * @param j Second dimension.
          * @param t Current time.
-         * @return The index in `table` that maps to (i, j, t).
+         * @return The index in `DP.table` that maps to \f$(i, j, t)\f$.
          */
         std::size_t index_dn(Loc const& i, Loc const& j, Time const& t) const;
 
     public:
         /**
-         * @brief Compute the number of paths in W_{x, y, t} for all possible
-         * (x, y) and all t <= T, starting in `origin`, (0, 0) by default.
-         * @param max_time The value of T (allowed number of steps).
-         * @param propagate The propagation function, see e.g. uniform_prop.
+         * @brief Compute the number of paths in \f$W_{x, y, t}\f$ for all
+         * possible \f$(x, y)\f$ and all \f$t \le T\f$, starting in @p origin,
+         * \f$(0, 0)\f$ by default.
+         * @param max_time The value of \f$T\f$ (allowed number of steps).
+         * @param propagate The propagation function, see e.g.
+         * `uniform_prop()`.
          * @param origin The starting location at time 0.
          * @param blocked_cells The set of blocked cells.
          * @param dense_st Whether to use the dense storage representation.
@@ -173,39 +197,41 @@ namespace dp {
             bool dense_st = false);
 
         /**
-         * @brief Return the value P(i, j, t) in the DP, with 0 for unreachable
-         * cells.
-         * @param i First dimension, non-zero values possible from -T to T.
+         * @brief Return the value \f$P(i, j, t)\f$ in the DP, with 0 for
+         * unreachable cells.
+         * @param i First dimension, non-zero values possible from \f$-T\f$ to
+         * \f$T\f$.
          * @param j Second dimension.
-         * @param t The time, between 0 and T.
-         * @return The number of paths in W_{i, j, t}.
+         * @param t The time, between \f$0\f$ and \f$T\f$.
+         * @return The number of paths in \f$W_{i, j, t}\f$.
          */
         Cnt at(Loc const& i, Loc const& j, Time const& t) const;
 
         /**
-         * @brief Return the value P(i, j, t) in the DP. Throw an exception for
-         * out-of-bounds values that are not stored explicitly.
+         * @brief Return the value \f$P(i, j, t)\f$ in the DP. Throw an
+         * exception for out-of-bounds values that are not stored explicitly.
          * @param i First dimension.
          * @param j Second dimension.
-         * @param t The time, 0 to T.
-         * @return The number of paths in W_{i, j, t}.
+         * @param t The time, \f$0\f$ to \f$T\f$.
+         * @return The number of paths in \f$W_{i, j, t}\f$.
          */
         Cnt& at(Loc const& i, Loc const& j, Time const& t);
 
         /**
-         * @brief Flip the time, so the paths start at T and end at 0.
+         * @brief Flip the time, so the paths start at \f$T\f$ and end at
+         * \f$0\f$.
          */
         void flip_time();
 
         /**
-         * @brief Flip the coordinates, so a query for (x, y, t) returns the
-         * result in (-x, -y, t) (after accounting for the shift).
+         * @brief Flip the coordinates, so a query for \f$(x, y, t)\f$ returns
+         * the result in \f$(-x, -y, t)\f$ (after accounting for the shift).
          */
         void flip_coords();
 
         /**
-         * @brief Shift the origin from (0, 0) or other current one to
-         * `origin`.
+         * @brief Shift the origin from \f$(0, 0)\f$ or other current one to
+         * @p origin.
          * @param origin The new origin.
          */
         void set_shift(Cell origin);
@@ -220,8 +246,8 @@ namespace dp {
 
         /**
          * @brief Flatten a DP to sum up the values at the same time stamp.
-         * @param max_time Only sum up from t = 0 to max_time; if
-         * max_time >= T, sum up over the entire DP.
+         * @param max_time Only sum up from t = 0 to @p max_time; if
+         * @p max_time &ge; `T`, sum up over the entire DP.
          * @return A mapping from points (i, j) to the sum from DP over all t.
          */
         Visits flatten(Time const& max_time) const;
@@ -233,7 +259,8 @@ namespace dp {
      * @param r The instance of the DP from which we propagate.
      * @param i First dimension.
      * @param j Second dimension.
-     * @param t The time from which we propagate to t + 1.
+     * @param t The time from which we propagate to @p t + 1.
+     * @return The count in (@p i, @p j) at @p t + 1.
      */
     Cnt uniform_prop(DP const& r, Loc const& i, Loc const& j, Time const& t);
 
@@ -244,7 +271,8 @@ namespace dp {
      * @param r The instance of the DP from which we propagate.
      * @param i First dimension.
      * @param j Second dimension.
-     * @param t The time from which we propagate to t + 1.
+     * @param t The time from which we propagate to @p t + 1.
+     * @return The count in (@p i, @p j) at @p t + 1.
      */
     Cnt uniform_diag_prop(DP const& r, Loc const& i, Loc const& j,
         Time const& t);

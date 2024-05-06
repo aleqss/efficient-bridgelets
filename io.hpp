@@ -10,6 +10,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file
+ * @brief I/O functions.
+ * @author Aleksandr Popov
+ * @date 2023, 2024
+ * @copyright GNU GPLv3
+ */
+
 #ifndef IO_H
 #define IO_H
 
@@ -22,27 +30,29 @@ namespace dp {
     class DP;
 }
 
+/**
+ * @brief Collection of I/O functions.
+ */
 namespace io {
-    using ::dp::Loc, ::dp::Time, ::dp::Cell, ::dp::DP, ::map::Traj;
-
     /**
-     * @brief Output the last layer of the DP to a stream.
-     * @param table The DP.
-     * @param T The T of the DP; we output the layer at time T.
+     * @brief Output the last layer of the `dp::DP` to a stream.
+     * @param table The `dp::DP`.
+     * @param T The \f$T\f$ of the DP; we output the layer at time \f$T\f$.
      * @param shift The start point of the DP.
      * @param outf The output stream.
      */
-    void dp_write(DP const& table, Time const& T, Cell const& shift,
+    void dp_write(dp::DP const& table, Time const& T, Cell const& shift,
         std::ostream& outf);
 
     /**
-     * @brief Output the flattened DP to a stream.
+     * @brief Output the flattened `dp::DP` to a stream.
      * @param table The DP.
-     * @param T The T of the DP; we output the DP flattened up to time T.
+     * @param T The \f$T\f$ of the DP; we output the DP flattened up to time
+     * \f$T\f$.
      * @param shift The start point of the DP.
      * @param outf The output stream.
      */
-    void flat_write(DP const& table, Time const& T, Cell const& shift,
+    void flat_write(dp::DP const& table, Time const& T, Cell const& shift,
         std::ostream& outf);
 
     /**
@@ -58,13 +68,13 @@ namespace io {
      * The trajectory is expected in CSV format, one point per line, starting
      * with line four, as t,x,y.
      * @param inf The input stream.
-     * @return The sequence of (t, x, y) tuples.
+     * @return The sequence of \f$(t, x, y)\f$ tuples.
      */
     Traj read_traj(std::istream& inf);
 
     /**
      * @brief Make a trajectory sparse by omitting measurements closer than
-     * `skip` units in time.
+     * @p skip units in time.
      * @param dense The original trajectory.
      * @param skip The number of time steps within which we wish to not have
      * any measurements.
