@@ -481,19 +481,25 @@ namespace {
             auto pr_naive = util::bridge(naive, 0, naive.size() - 1, diag);
             auto e_naive = reg.pred_error(pr_naive, ground);
             auto e_naiver = reg.pred_error(util::ignore_pr(pr_naive), ground);
+            auto e_straight = reg.pred_error(util::straight_line(naive),
+                ground);
             // auto [c, e] = reg.query_error(
             //     sparse ? io::sparsify(ground) : ground, ground, use_points);
 
             stats << test_id << ' ' << c << ' ' << e << ' ' << e_learned << ' '
-                << e_naive << ' ' << e_naiver << '\n';
+                << e_naive << ' ' << e_naiver << ' ' << e_straight << '\n';
             err.emplace_back(c, e);
             err_learned.emplace_back(c, e_learned);
             err_naive.emplace_back(c, e_naive);
             err_naiver.emplace_back(c, e_naiver);
+            err_straight.emplace_back(c, e_straight);
         }
 
-        std::vector<decltype(err)> it{err, err_learned, err_naive, err_naiver};
-        for (auto& errors: it) {
+        std::vector<std::pair<char const*, decltype(err)>> it {
+            {"Bridges", err}, {"Learned bead", err_learned},
+            {"Ellipse", err_naive}, {"Ellipse bead", err_naiver},
+            {"Straight line bead", err_straight}};
+        for (auto& [name, errors]: it) {
             std::vector<double> cov, uncov;
             for (auto const& [c, e]: errors) {
                 if (c)
@@ -506,8 +512,9 @@ namespace {
                 [](PBD const& p) {return p.second;});
             auto med_cov = median(cov);
             auto med_uncov = median(uncov);
-            std::cout << "Median errors:\nCovered: " << med_cov
-                << "\nUncovered: " << med_uncov << "\nTotal: " << med << '\n';
+            std::cout << name << " median errors:\nCovered: " << med_cov
+                << "\nUncovered: " << med_uncov << "\nTotal: " << med
+                << "\n\n";
         }
     }
 }
