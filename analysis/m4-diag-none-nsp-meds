@@ -1,0 +1,36 @@
+Which movement mode would you like to analyse: walking (1), driving (2), taking
+a train (3), or cycling (4)?
+> 4
+Should the trajectories be made sparse? [y/n]
+> n
+Do you want to use the intermediate points during training, and if so, should
+all be used, or maximum or minimum amount needed? [n(o)/a(ll)/f(ew)/m(ost)]
+> n
+Should diagonal movement be allowed? [y/n]
+> y
+Testing trajectories.
+
+Bridges median errors:
+Covered: 0.5
+Uncovered: 8.71199
+Total: 4.8393
+
+Learned bead median errors:
+Covered: 1
+Uncovered: 100
+Total: 36
+
+Ellipse median errors:
+Covered: 5.80571
+Uncovered: 8.71199
+Total: 7.50364
+
+Ellipse bead median errors:
+Covered: 50
+Uncovered: 100
+Total: 76
+
+Straight line bead median errors:
+Covered: 3
+Uncovered: 5
+Total: 4
