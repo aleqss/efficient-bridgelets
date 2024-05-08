@@ -379,9 +379,8 @@ def print_trs(df: pandas.DataFrame, subdir: pathlib.Path) -> None:
 
 def process_data(subdir: pathlib.Path, search: bool = False) -> None:
     '''Split data into subtrajectories and discretise them.'''
-    deltax = {1: 75, 2: 960, 3: 1820, 4: 105, 99: 1}
-    deltat = {1: 40, 2: 47, 3: 70, 4: 19, 99: 1}
-    # deltat = {1: 39, 2: 45, 99: 1} #54.12138%
+    deltat = {1: 40, 2: 47, 3: 70, 4: 20, 99: 1}
+    deltax = {1: 80, 2: 960, 3: 1820, 4: 105, 99: 1}
 
     df = project_data(subdir)
     goal_dense = 98 if conf.dense else 15
