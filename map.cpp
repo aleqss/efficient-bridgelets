@@ -141,8 +141,10 @@ namespace map {
     }
 
     void Map::train(Traj tr, std::uint32_t trid) {
-        for (std::size_t i = 0u; i < tr.size() - 3u; ++i)
-            for (std::size_t j = i + 3u; j < tr.size(); ++j)
+        if (tr.size() < 3)
+            return;
+        for (std::size_t i = 0u; i < tr.size() - 2u; ++i)
+            for (std::size_t j = i + 2u; j < tr.size(); ++j)
                 map[to_bridge_id(tr[i], tr[j])].emplace_front(trid, i, j);
         tr_reg.emplace(trid, std::move(tr));
     }
@@ -154,6 +156,8 @@ namespace map {
     }
 
     std::pair<bool, Probs> Map::query(Traj const& tr, Inter use_points) const {
+        if (tr.size() < 2)
+            throw std::invalid_argument("Trajectory is too short.");
         switch (use_points) {
         case Inter::none: {
             auto s = tr.front(), e = tr.back();
@@ -183,6 +187,8 @@ namespace map {
 
     bool Map::covered(Traj const& tr, std::size_t s, std::size_t e,
             Inter use_points) const {
+        if (s > e || e >= tr.size())
+            throw std::invalid_argument("Values of s and e are incorrect.");
         switch (use_points) {
         case Inter::none:
             return is_present(tr[s], tr[e]);

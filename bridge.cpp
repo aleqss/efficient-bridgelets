@@ -150,6 +150,8 @@ namespace util {
 
     Probs straight_line(Traj const& tr) {
         Probs res;
+        if (tr.size() < 2)
+            return res;
         res[::map::meas_to_cell(tr.front())] = 1;
         for (std::size_t i = 0; i < tr.size() - 1; ++i) {
             Cell cur = ::map::meas_to_cell(tr[i]);
