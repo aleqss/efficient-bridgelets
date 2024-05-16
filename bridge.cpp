@@ -140,10 +140,11 @@ namespace util {
         return res;
     }
 
-    Probs ignore_pr(Probs const& pred) {
+    Probs ignore_pr(Probs const& pred, Frac const& thr) {
         Probs res;
         for (auto const& [cell, pr]: pred)
-            res[cell] = 1;
+            if (pr >= thr)
+                res[cell] = 1;
         return res;
     }
 
