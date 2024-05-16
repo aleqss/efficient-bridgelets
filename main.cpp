@@ -409,6 +409,21 @@ namespace {
         }
     }
 
+    std::string inter_to_string(map::Map::Inter const& use_points) {
+        switch (use_points) {
+        case map::Map::Inter::none:
+            return "none";
+        case map::Map::Inter::few:
+            return "few";
+        case map::Map::Inter::most:
+            return "most";
+        case map::Map::Inter::all:
+            return "all";
+        default:
+            throw std::domain_error("Unhandled value of Inter enum.");
+        }
+    }
+
     /**
      * @brief Run the experiment with bridges on the OpenPFLOW data.
      */
@@ -446,6 +461,7 @@ namespace {
             }, diag_ch);
         bool diag = (diag_ch == 'y');
 
+        // Training
         std::filesystem::path fname = "./movement";
         fname /= std::to_string(mode);
         std::ifstream trainlist(fname / "train.txt");
@@ -453,38 +469,135 @@ namespace {
         map::Map reg;
         if (diag)
             reg.enable_diag();
+        std::size_t cntr = 0;
         for (auto const& train_id: trainfiles) {
             std::ifstream trainf(fname / std::to_string(train_id));
             if (sparse)
                 reg.train(io::sparsify(io::read_traj(trainf)), train_id);
             else
                 reg.train(io::read_traj(trainf), train_id);
+            ++cntr;
+            if (cntr % 500 == 0)
+                std::cout << "\rTraining " << cntr << "/" << trainfiles.size()
+                    << std::flush;
+        }
+        std::cout << "\rTraining complete, processed " << trainfiles.size()
+            << " trajectories.\n\n";
+
+        char query_ch;
+        read_flag("Would you like to query a specific trajectory or use the "
+            "testing dataset? [q/t]", "Please type q or t", [](char c) {
+                return c == 'q' || c == 't';
+            }, query_ch);
+        bool query = (query_ch == 'q');
+
+        // We need these IDs either way
+        std::ifstream testlist(fname / "test.txt");
+        auto const testfiles = io::read_flist(testlist);
+
+        std::filesystem::path outpath = "./analysis";
+        outpath /= std::to_string(mode);
+        std::filesystem::create_directory(outpath, fname);
+
+        // Single query
+        if (query) {
+            double threshold;
+            read_flag("Which threshold should be used for the baseline beads?"
+                "\n[-1 (ask per query) / [0.0, 1.0] (set a threshold)]",
+                "Please enter a number between 0.0 and 1.0, or -1",
+                [](double t) {
+                    return (t >= 0.0 && t <= 1.0) || t == -1.0;
+                }, threshold);
+
+            std::unordered_set const possible(testfiles.begin(),
+                testfiles.end());
+            bool cont = true;
+            do {
+                std::uint32_t trid;
+                read_flag("Please enter the trajectory ID:",
+                    "Please enter a valid ID.", [&](std::uint32_t num) {
+                        return possible.count(num);
+                    }, trid);
+
+                double thr = threshold;
+                if (threshold == -1.0)
+                    read_flag("Which threshold should be used for the baseline"
+                        " beads? [0.0, 1.0]", "Please enter a number between "
+                        "0.0 and 1.0", [](double t) {
+                            return t >= 0.0 && t <= 1.0;
+                        }, thr);
+
+                std::ifstream trf(fname / std::to_string(trid));
+                auto ground = io::read_traj(trf);
+                auto qtraj = sparse ? io::sparsify(ground) : ground;
+                auto [cov, probs] = reg.query(qtraj, use_points);
+                auto learned = util::ignore_pr(probs, thr);
+                auto pnaive = select_points(qtraj, use_points);
+                auto naive = util::bridge(pnaive, 0, pnaive.size() - 1, diag);
+                auto naiver = util::ignore_pr(naive, thr);
+                auto straight = util::straight_line(pnaive);
+
+                std::vector<std::pair<char const*, io::Probs const*>> results {
+                    {"main", &probs}, {"learned", &learned},
+                    {"ellipse", &naive}, {"ell_ones", &naiver},
+                    {"straight", &straight}
+                };
+
+                auto qpath = outpath / std::to_string(trid);
+                std::filesystem::create_directory(qpath, outpath);
+                std::cout << "Covered: " << cov << '\n';
+                for (auto const& [name, obj]: results) {
+                    std::ofstream outf(qpath / name);
+                    io::probs_write(*obj, outf);
+                    std::cout << "Error " << std::left << std::setw(8) << name
+                        << ' ' << reg.pred_error(*obj, ground) << '\n';
+                }
+                std::cout << std::endl;
+
+                char cont_ch;
+                read_flag("Would you like to query another trajectory? [y/n]",
+                    "Please type y or n.", [](char c) {
+                        return c == 'y' || c == 'n';
+                    }, cont_ch);
+                cont &= (cont_ch == 'y');
+            } while (cont);
+            return;
         }
 
+        // Mass testing
+        double thr;
+        read_flag("Which threshold should be used for the baseline beads? "
+            "[0.0, 1.0]", "Please enter a number between 0.0 and 1.0",
+            [](double t) {
+                return t >= 0.0 && t <= 1.0;
+            }, thr);
         using PBD = std::pair<bool, double>;
         std::cout << "Testing trajectories.\n\n";
-        std::ofstream stats(fname / "stats.txt");
-        std::ifstream testlist(fname / "test.txt");
+        std::ostringstream stats_fname;
+        stats_fname << 'm' << mode << (diag ? "-diag-t" : "-std-t") << thr
+            << '-' << inter_to_string(use_points) << (sparse ? "-sp" : "-nsp");
+        std::ofstream stats(outpath / stats_fname.str());
+        stats << "id cov main learned ellipse ell_ones straight\n";
         std::vector<PBD> err, err_learned, err_naive, err_naiver, err_straight;
 
-        auto testfiles = io::read_flist(testlist);
+        cntr = 0;
         for (auto const& test_id: testfiles) {
             std::ifstream testf(fname / std::to_string(test_id));
             auto ground = io::read_traj(testf);
             auto [c, probs] = reg.query(sparse ? io::sparsify(ground) : ground,
                 use_points);
             auto e = reg.pred_error(probs, ground);
-            auto e_learned = reg.pred_error(util::ignore_pr(probs), ground);
+            auto e_learned = reg.pred_error(util::ignore_pr(probs, thr),
+                ground);
 
             auto naive = select_points(sparse ? io::sparsify(ground) : ground,
                 use_points);
             auto pr_naive = util::bridge(naive, 0, naive.size() - 1, diag);
             auto e_naive = reg.pred_error(pr_naive, ground);
-            auto e_naiver = reg.pred_error(util::ignore_pr(pr_naive), ground);
+            auto e_naiver = reg.pred_error(util::ignore_pr(pr_naive, thr),
+                ground);
             auto e_straight = reg.pred_error(util::straight_line(naive),
                 ground);
-            // auto [c, e] = reg.query_error(
-            //     sparse ? io::sparsify(ground) : ground, ground, use_points);
 
             stats << test_id << ' ' << c << ' ' << e << ' ' << e_learned << ' '
                 << e_naive << ' ' << e_naiver << ' ' << e_straight << '\n';
@@ -493,7 +606,14 @@ namespace {
             err_naive.emplace_back(c, e_naive);
             err_naiver.emplace_back(c, e_naiver);
             err_straight.emplace_back(c, e_straight);
+
+            ++cntr;
+            if (cntr % 100 == 0)
+                std::cout << "\rTesting " << cntr << "/" << testfiles.size()
+                    << std::flush;
         }
+        std::cout << "\rTesting complete, processed " << testfiles.size()
+            << " trajectories.\n\n";
 
         std::vector<std::pair<char const*, decltype(err)>> it {
             {"Bridges", err}, {"Learned bead", err_learned},
