@@ -1,12 +1,13 @@
 backend: pgf
 font.family: serif
 font.size: 11.0
-text.usetex: True
+lines.markersize: 4
+pgf.rcfonts: False
+pgf.preamble: \usepackage{amsmath,amsfonts}
+pgf.texsystem: pdflatex
 savefig.dpi: 600
 savefig.format: pgf
 savefig.bbox: tight
 savefig.directory: ./figs/
 savefig.transparent: True
-pgf.rcfonts: False
-pgf.preamble: \usepackage{amsmath,amsfonts}
-pgf.texsystem: pdflatex
+text.usetex: True
