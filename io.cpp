@@ -56,6 +56,11 @@ namespace io {
             }
     }
 
+    void probs_write(Probs const& pr, std::ostream& outf) {
+        for (auto const& [cell, fr]: pr)
+            outf << to_string(cell) << ' ' << fr.get_str() << '\n';
+    }
+
     void traj_write(std::vector<Cell> const& traj, std::ostream& outf) {
         for (auto const& [i, j]: traj)
             outf << i << ' ' << j << '\n';
@@ -99,5 +104,11 @@ namespace io {
         while (inf >> tmp)
             ret.push_back(std::move(tmp));
         return ret;
+    }
+
+    std::string to_string(Cell const& cell) {
+        std::ostringstream out;
+        out << '{' << cell.first << ' ' << cell.second << '}';
+        return out.str();
     }
 }

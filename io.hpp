@@ -56,6 +56,15 @@ namespace io {
         std::ostream& outf);
 
     /**
+     * @brief Output the probability map to a stream.
+     *
+     * Output format: `{x y} pr` for any cell with non-zero probability.
+     * @param pr The probability map.
+     * @param outf The output stream.
+     */
+    void probs_write(Probs const& pr, std::ostream& outf);
+
+    /**
      * @brief Output an untimed trajectory to a stream.
      * @param traj The trajectory.
      * @param outf The output stream.
@@ -88,5 +97,12 @@ namespace io {
      * @return The resulting list of trajectory IDs.
      */
     std::vector<std::uint32_t> read_flist(std::istream& inf);
+
+    /**
+     * @brief Convert a cell to a string representation.
+     * @param cell A cell (x, y).
+     * @return The string representation, currently `{x y}`.
+     */
+    std::string to_string(Cell const& cell);
 }
 #endif
