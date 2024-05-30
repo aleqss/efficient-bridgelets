@@ -105,4 +105,13 @@ namespace io {
      */
     std::string to_string(Cell const& cell);
 }
+
+/**
+ * @brief Output the @p err to a stream with appropriate precision.
+ * @param outs The output stream.
+ * @param err The error with `fp`, `fn`, and `total`.
+ * @return outs The stream with the same properties, after outputting `fp`,
+ * `fn`, and `total` in that order.
+ */
+std::ostream& operator<<(std::ostream& outs, io::Error const& err);
 #endif

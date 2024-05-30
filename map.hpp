@@ -287,7 +287,7 @@ namespace map {
          * @param gr The true trajectory.
          * @return The error.
          */
-        double pred_error(Probs const& pred, Traj const& gr) const;
+        Error pred_error(Probs const& pred, Traj const& gr) const;
 
         /**
          * @brief Compute the error for our prediction for @p tr compared to
@@ -305,7 +305,7 @@ namespace map {
          * subtrajectory to try to cover the trajectory in pieces.
          * @return Whether @p tr is covered by `Map.map` and the error.
          */
-        std::pair<bool, double> query_error(Traj const& tr, Traj const& gr,
+        std::pair<bool, Error> query_error(Traj const& tr, Traj const& gr,
             Inter use_points = Inter::none) const;
 
         /**

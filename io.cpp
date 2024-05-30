@@ -21,6 +21,7 @@
 #include "io.hpp"
 
 #include <cassert>
+#include <iomanip>
 #include <ios>
 #include <istream>
 #include <limits>
@@ -111,4 +112,11 @@ namespace io {
         out << '{' << cell.first << ' ' << cell.second << '}';
         return out.str();
     }
+}
+
+std::ostream& operator<<(std::ostream& outs, io::Error const& err) {
+    auto prec = outs.precision();
+    outs << std::fixed << std::setprecision(4) << err.fp << ' ' << err.fn
+        << ' ' << err.total << std::defaultfloat << std::setprecision(prec);
+    return outs;
 }

@@ -91,6 +91,19 @@ namespace dtypes {
     using BridgeID = std::tuple<Cell, Cell, Time>;
     /// Identifier for subtrajectories: trajectory ID, start, and end indices.
     using SubTraj = std::tuple<std::uint32_t, std::size_t, std::size_t>;
+
+    /**
+     * @brief The prediction error: false positives, false negatives, and
+     * total.
+     */
+    struct Error {
+        /// False positives: pr > 0, but cell not in true path.
+        double fp = 0.0;
+        /// False negatives: pr < 1, but cell in true path.
+        double fn = 0.0;
+        /// Total error, as in the paper, so `total = fp + fn`.
+        double total = 0.0;
+    };
 }
 
 namespace dp {

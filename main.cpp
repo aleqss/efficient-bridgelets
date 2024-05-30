@@ -571,13 +571,15 @@ namespace {
             [](double t) {
                 return t >= 0.0 && t <= 1.0;
             }, thr);
-        using PBD = std::pair<bool, double>;
+        using PBD = std::pair<bool, map::Error>;
         std::cout << "Testing trajectories.\n\n";
         std::ostringstream stats_fname;
         stats_fname << 'm' << mode << (diag ? "-diag-t" : "-std-t") << thr
             << '-' << inter_to_string(use_points) << (sparse ? "-sp" : "-nsp");
         std::ofstream stats(outpath / stats_fname.str());
-        stats << "id cov main learned ellipse ell_ones straight\n";
+        stats << "id cov main_fp main_fn main learned_fp learned_fn learned "
+            << "ellipse_fp ellipse_fn ellipse ell_ones_fp ell_ones_fn ell_ones"
+            << " straight_fp straight_fn straight\n";
         std::vector<PBD> err, err_learned, err_naive, err_naiver, err_straight;
 
         cntr = 0;
@@ -619,8 +621,16 @@ namespace {
             {"Bridges", err}, {"Learned bead", err_learned},
             {"Ellipse", err_naive}, {"Ellipse bead", err_naiver},
             {"Straight line bead", err_straight}};
+
+        auto err_cmp = [](map::Error const& a, map::Error const& b) {
+            return a.total < b.total;
+        };
+        auto err_ext = [](map::Error const& e) {
+            return e.total;
+        };
+
         for (auto& [name, errors]: it) {
-            std::vector<double> cov, uncov;
+            std::vector<map::Error> cov, uncov;
             for (auto const& [c, e]: errors) {
                 if (c)
                     cov.push_back(e);
@@ -628,10 +638,10 @@ namespace {
                     uncov.push_back(e);
             }
             auto med = median(errors, [](PBD const& a, PBD const& b) {
-                    return a.second < b.second; },
-                [](PBD const& p) {return p.second;});
-            auto med_cov = median(cov);
-            auto med_uncov = median(uncov);
+                    return a.second.total < b.second.total;
+                }, [](PBD const& p) {return p.second.total;});
+            auto med_cov = median(cov, err_cmp, err_ext);
+            auto med_uncov = median(uncov, err_cmp, err_ext);
             std::cout << name << " median errors:\nCovered: " << med_cov
                 << "\nUncovered: " << med_uncov << "\nTotal: " << med
                 << "\n\n";

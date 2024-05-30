@@ -209,21 +209,23 @@ namespace map {
         }
     }
 
-    double Map::pred_error(Probs const& pred, Traj const& gr) const {
+    Error Map::pred_error(Probs const& pred, Traj const& gr) const {
         std::unordered_set<Cell, dp::LocHash> vs;
         for (auto [t, x, y]: gr)
             vs.emplace(std::move(x), std::move(y));
-        Frac res = vs.size();
+        Frac fn = vs.size();
+        Frac fp = 0;
         for (auto const& [cell, prob]: pred) {
             if (vs.count(cell))
-                res -= prob;
+                fn -= prob;
             else
-                res += prob;
+                fp += prob;
         }
-        return ::util::getd(res);
+        Frac tot = fn + fp;
+        return {::util::getd(fp), ::util::getd(fn), ::util::getd(tot)};
     }
 
-    std::pair<bool, double> Map::query_error(Traj const& tr, Traj const& gr,
+    std::pair<bool, Error> Map::query_error(Traj const& tr, Traj const& gr,
             Inter use_points) const {
         auto [cov, probs] = query(tr, use_points);
         auto error = pred_error(probs, gr);
