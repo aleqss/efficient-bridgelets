@@ -80,6 +80,50 @@ namespace {
     }
 
     /**
+     * @brief Read a list of values of the same type with checking.
+     * @param prompt The prompt (without newline at the end).
+     * @param wrong The message displayed if the input did not pass validation.
+     * @param check The function that takes each input value and validates it
+     * (returns true if validation passes).
+     * @param vars The container for the resulting values.
+     */
+    template <typename Test, typename T>
+    void read_vec(char const* prompt, char const* wrong, Test check,
+            std::vector<T>& vars) {
+        bool invalid;
+        do {
+            std::cout << prompt << "\n> ";
+            std::string line;
+            std::getline(std::cin >> std::ws, line);
+            std::istringstream inps(line);
+            if (!std::cin) {
+                std::cout << wrong << '\n';
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(),
+                    '\n');
+                continue;
+            }
+
+            vars.clear();
+            T var;
+            while (inps >> var)
+                vars.push_back(var);
+            if (inps.fail() && !inps.eof()) {
+                std::cout << wrong << '\n';
+                continue;
+            }
+
+            invalid = false;
+            for (auto const& v: vars) {
+                if (!check(v)) {
+                    std::cout << wrong << '\n';
+                    invalid = true;
+                }
+            }
+        } while (invalid);
+    }
+
+    /**
      * @brief Check if the path counts at time @p T match up for the DP and the
      * explicit computation.
      * @param T The \f$T\f$ of the explicit computation, not larger than
@@ -565,22 +609,33 @@ namespace {
         }
 
         // Mass testing
-        double thr;
-        read_flag("Which threshold should be used for the baseline beads? "
-            "[0.0, 1.0]", "Please enter a number between 0.0 and 1.0",
+        std::vector<double> thrs;
+        read_vec("Which thresholds should be used for the baseline beads? "
+            "Enter one or more\nnumbers from [0.0, 1.0].", "Please enter one "
+            "or more numbers from [0.0, 1.0] separated by spaces.",
             [](double t) {
                 return t >= 0.0 && t <= 1.0;
-            }, thr);
+            }, thrs);
         using PBD = std::pair<bool, map::Error>;
         std::cout << "Testing trajectories.\n\n";
         std::ostringstream stats_fname;
-        stats_fname << 'm' << mode << (diag ? "-diag-t" : "-std-t") << thr
-            << '-' << inter_to_string(use_points) << (sparse ? "-sp" : "-nsp");
+        stats_fname << 'm' << mode << (diag ? "-diag-t" : "-std-t");
+        for (const auto& thr: thrs)
+            stats_fname << thr << '-';
+        stats_fname << inter_to_string(use_points)
+            << (sparse ? "-sp" : "-nsp");
         std::ofstream stats(outpath / stats_fname.str());
-        stats << "id cov main_fp main_fn main learned_fp learned_fn learned "
-            << "ellipse_fp ellipse_fn ellipse ell_ones_fp ell_ones_fn ell_ones"
-            << " straight_fp straight_fn straight\n";
-        std::vector<PBD> err, err_learned, err_naive, err_naiver, err_straight;
+        stats << "id sz cov main_fp main_fn main";
+        for (auto const& thr: thrs)
+            stats << " learned_fp_" << thr << " learned_fn_" << thr
+                << " learned_" << thr;
+        stats << " ellipse_fp ellipse_fn ellipse";
+        for (auto const& thr: thrs)
+            stats << " ell_ones_fp_" << thr << " ell_ones_fn_" << thr
+                << " ell_ones_" << thr;
+        stats << " straight_fp straight_fn straight\n";
+        std::vector<PBD> err, err_naive, err_straight;
+        std::unordered_map<double, std::vector<PBD>> err_learned, err_naiver;
 
         cntr = 0;
         for (auto const& test_id: testfiles) {
@@ -589,25 +644,41 @@ namespace {
             auto [c, probs] = reg.query(sparse ? io::sparsify(ground) : ground,
                 use_points);
             auto e = reg.pred_error(probs, ground);
-            auto e_learned = reg.pred_error(util::ignore_pr(probs, thr),
-                ground);
+
+            std::unordered_map<double, map::Error> es_learned;
+            for (auto const& thr: thrs)
+                es_learned[thr] = reg.pred_error(util::ignore_pr(probs, thr),
+                    ground);
 
             auto naive = select_points(sparse ? io::sparsify(ground) : ground,
                 use_points);
             auto pr_naive = util::bridge(naive, 0, naive.size() - 1, diag);
             auto e_naive = reg.pred_error(pr_naive, ground);
-            auto e_naiver = reg.pred_error(util::ignore_pr(pr_naive, thr),
-                ground);
+
+            std::unordered_map<double, map::Error> es_naiver;
+            for (auto const& thr: thrs)
+                es_naiver[thr] = reg.pred_error(util::ignore_pr(pr_naive, thr),
+                    ground);
+
             auto e_straight = reg.pred_error(util::straight_line(naive),
                 ground);
 
-            stats << test_id << ' ' << c << ' ' << e << ' ' << e_learned << ' '
-                << e_naive << ' ' << e_naiver << ' ' << e_straight << '\n';
+            stats << test_id << ' ' << ground.size() << ' ' << c << ' ' << e
+                << ' ';
+            for (auto const& thr: thrs)
+                stats << es_learned.at(thr) << ' ';
+            stats << e_naive << ' ';
+            for (auto const& thr: thrs)
+                stats << es_naiver.at(thr) << ' ';
+            stats << e_straight << '\n';
+
             err.emplace_back(c, e);
-            err_learned.emplace_back(c, e_learned);
             err_naive.emplace_back(c, e_naive);
-            err_naiver.emplace_back(c, e_naiver);
             err_straight.emplace_back(c, e_straight);
+            for (auto const& thr: thrs) {
+                err_learned[thr].emplace_back(c, es_learned.at(thr));
+                err_naiver[thr].emplace_back(c, es_naiver.at(thr));
+            }
 
             ++cntr;
             if (cntr % 100 == 0)
@@ -617,10 +688,15 @@ namespace {
         std::cout << "\rTesting complete, processed " << testfiles.size()
             << " trajectories.\n\n";
 
-        std::vector<std::pair<char const*, decltype(err)>> it {
-            {"Bridges", err}, {"Learned bead", err_learned},
-            {"Ellipse", err_naive}, {"Ellipse bead", err_naiver},
+        std::vector<std::pair<std::string, decltype(err)>> it {
+            {"Bridges", err}, {"Ellipse", err_naive},
             {"Straight line bead", err_straight}};
+        for (auto const& thr: thrs)
+            it.emplace_back("Learned bead " + std::to_string(thr),
+                err_learned.at(thr));
+        for (auto const& thr: thrs)
+            it.emplace_back("Ellipse bead " + std::to_string(thr),
+                err_naiver.at(thr));
 
         auto err_cmp = [](map::Error const& a, map::Error const& b) {
             return a.total < b.total;
