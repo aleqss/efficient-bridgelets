@@ -252,4 +252,16 @@ namespace dp {
             + r.at(i - 1, j - 1, t) + r.at(i, j - 1, t) + r.at(i + 1, j - 1, t)
             + r.at(i + 1, j, t) + r.at(i + 1, j + 1, t) + r.at(i, j + 1, t);
     }
+
+    Cnt staying_prop(DP const& r, Loc const& i, Loc const& j, Time const& t) {
+        return r.at(i, j, t) * 2 + r.at(i - 1, j, t) + r.at(i + 1, j, t)
+            + r.at(i, j - 1, t) + r.at(i, j + 1, t);
+    }
+
+    Cnt staying_diag_prop(DP const& r, Loc const& i, Loc const& j,
+            Time const& t) {
+        return r.at(i, j, t) * 2 + r.at(i - 1, j + 1, t) + r.at(i - 1, j, t)
+            + r.at(i - 1, j - 1, t) + r.at(i, j - 1, t) + r.at(i + 1, j - 1, t)
+            + r.at(i + 1, j, t) + r.at(i + 1, j + 1, t) + r.at(i, j + 1, t);
+    }
 }

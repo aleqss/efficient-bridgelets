@@ -276,5 +276,30 @@ namespace dp {
      */
     Cnt uniform_diag_prop(DP const& r, Loc const& i, Loc const& j,
         Time const& t);
+
+    /**
+     * @brief Uniform propagation for the DP with a preference to stay in the
+     * current cell: one path in each neighbouring direction, two paths for
+     * staying in the same spot.
+     * @param r The instance of the DP from which we propagate.
+     * @param i First dimension.
+     * @param j Second dimension.
+     * @param t The time from which we propagate to @p t + 1.
+     * @return The count in (@p i, @p j) at @p t + 1.
+     */
+    Cnt staying_prop(DP const& r, Loc const& i, Loc const& j, Time const& t);
+
+    /**
+     * @brief Uniform propagation for the DP allowing diagonal movement, but
+     * with a preference to stay in the current cell: one path in each of eight
+     * neighbouring directions, two paths for staying in the same spot.
+     * @param r The instance of the DP from which we propagate.
+     * @param i First dimension.
+     * @param j Second dimension.
+     * @param t The time from which we propagate to @p t + 1.
+     * @return The count in (@p i, @p j) at @p t + 1.
+     */
+    Cnt staying_diag_prop(DP const& r, Loc const& i, Loc const& j,
+        Time const& t);
 }
 #endif
