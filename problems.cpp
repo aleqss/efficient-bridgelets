@@ -24,19 +24,30 @@
 #include <utility>
 
 namespace prob {
-    dp::DP all_paths(Time T, Cell start,
-            std::unordered_set<dp::Blocked> const& blocked, bool diag) {
-        auto prop = diag ? dp::uniform_diag_prop : dp::uniform_prop;
-        dp::DP res(std::move(T), prop, std::move(start), blocked, diag);
+    std::function<Cnt(dp::DP const&, Loc const&, Loc const&,
+            Time const&)> Prop::propagate() const {
+        if (diag)
+            return stay ? dp::staying_diag_prop : dp::uniform_diag_prop;
+        return stay ? dp::staying_prop : dp::uniform_prop;
+    }
+
+    bool Prop::dense() const {
+        return diag;
+    }
+
+    dp::DP all_paths(Time T, Cell start, Prop const& prop,
+            std::unordered_set<dp::Blocked> const& blocked) {
+        dp::DP res(std::move(T), prop.propagate(), std::move(start), blocked,
+            prop.dense());
         return res;
     }
 
-    dp::DP visit_all(Time T, Cell start, Cell end, bool diag) {
-        auto prop = diag ? dp::uniform_diag_prop : dp::uniform_prop;
-        dp::DP first_visit(T, prop, {0, 0}, {{0, 0, 1}}, diag);
+    dp::DP visit_all(Time T, Cell start, Cell end, Prop const& prop) {
+        dp::DP first_visit(T, prop.propagate(), {0, 0}, {{0, 0, 1}},
+            prop.dense());
         first_visit.set_shift(std::move(start));
         first_visit.flip_coords();
-        dp::DP rest(std::move(T), prop, {0, 0}, {}, diag);
+        dp::DP rest(std::move(T), prop.propagate(), {0, 0}, {}, prop.dense());
         rest.flip_time();
         rest.set_shift(std::move(end));
         return first_visit * rest;

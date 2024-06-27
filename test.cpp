@@ -16,69 +16,76 @@
 #pragma GCC diagnostic pop
 
 #include "bridge.hpp"
-// #include "problems.hpp"
+#include "problems.hpp"
 #include "io.hpp"
 #include <filesystem>
 #include <fstream>
 #include "debug_print.hpp"
 
 TEST_CASE("bridgelets at origin no diag", "[bridge]") {
+    prob::Prop prop;
     ::util::Probs c1{{{0, 0}, 1}, {{1, 0}, {2, 3}}, {{2, 0}, {1, 3}},
                       {{0, 1}, {1, 3}}, {{1, 1}, {2, 3}}, {{2, 1}, 1}};
-    REQUIRE(c1 == ::util::bridgelet({0, 0, 0}, {3, 2, 1}, false));
+    REQUIRE(c1 == ::util::bridgelet({0, 0, 0}, {3, 2, 1}, prop));
 
     ::util::Probs c2{{{0, 0}, 1}, {{1, 0}, {1, 5}}, {{-1, 0}, {1, 5}},
         {{0, 1}, {1, 5}}, {{0, -1}, {1, 5}}};
-    REQUIRE(c2 == ::util::bridgelet({0, 0, 0}, {2, 0, 0}, false));
+    REQUIRE(c2 == ::util::bridgelet({0, 0, 0}, {2, 0, 0}, prop));
 
     ::util::Probs c3{{{0, 0}, 1}, {{1, 0}, 1}, {{2, 0}, 1}};
-    REQUIRE(c3 == ::util::bridgelet({0, 0, 0}, {2, 2, 0}, false));
+    REQUIRE(c3 == ::util::bridgelet({0, 0, 0}, {2, 2, 0}, prop));
 }
 
 TEST_CASE("bridgelets with shift no diag", "[bridge]") {
+    prob::Prop prop;
     ::util::Probs c1{{{-1, -1}, 1}, {{0, -1}, {2, 3}}, {{1, -1}, {1, 3}},
                       {{-1, 0}, {1, 3}}, {{0, 0}, {2, 3}}, {{1, 0}, 1}};
-    REQUIRE(c1 == ::util::bridgelet({1, -1, -1}, {4, 1, 0}, false));
+    REQUIRE(c1 == ::util::bridgelet({1, -1, -1}, {4, 1, 0}, prop));
 
     ::util::Probs c2{{{-1, -1}, 1}, {{-2, -1}, {3, 13}}, {{0, -1}, {3, 13}},
         {{-1, -2}, {3, 13}}, {{-1, 0}, {3, 13}}};
-    REQUIRE(c2 == ::util::bridgelet({1, -1, -1}, {4, -1, -1}, false));
+    REQUIRE(c2 == ::util::bridgelet({1, -1, -1}, {4, -1, -1}, prop));
 
     ::util::Probs c3{{{2, 0}, 1}, {{3, 0}, 1}, {{4, 0}, 1}, {{5, 0}, 1}};
-    REQUIRE(c3 == ::util::bridgelet({1, 2, 0}, {4, 5, 0}, false));
+    REQUIRE(c3 == ::util::bridgelet({1, 2, 0}, {4, 5, 0}, prop));
 }
 
 TEST_CASE("bridgelets at origin with diag", "[bridge]") {
+    prob::Prop prop;
+    prop.diag = true;
     ::util::Probs c1{{{0, 0}, 1}, {{1, 0}, {1, 2}},
                                   {{1, 1}, {1, 2}}, {{2, 1}, 1}};
-    REQUIRE(c1 == ::util::bridgelet({0, 0, 0}, {2, 2, 1}, true));
+    REQUIRE(c1 == ::util::bridgelet({0, 0, 0}, {2, 2, 1}, prop));
 
     ::util::Probs c2{{{0, 0}, 1}, {{1, 0}, {1, 9}}, {{-1, 0}, {1, 9}},
         {{0, 1}, {1, 9}}, {{0, -1}, {1, 9}}, {{1, 1}, {1, 9}},
         {{1, -1}, {1, 9}}, {{-1, 1}, {1, 9}}, {{-1, -1}, {1, 9}}};
-    REQUIRE(c2 == ::util::bridgelet({0, 0, 0}, {2, 0, 0}, true));
+    REQUIRE(c2 == ::util::bridgelet({0, 0, 0}, {2, 0, 0}, prop));
 
     ::util::Probs c3{{{0, 0}, 1}, {{1, 1}, 1}, {{2, 2}, 1}};
-    REQUIRE(c3 == ::util::bridgelet({0, 0, 0}, {2, 2, 2}, true));
+    REQUIRE(c3 == ::util::bridgelet({0, 0, 0}, {2, 2, 2}, prop));
 }
 
 TEST_CASE("bridgelets with shift with diag", "[bridge]") {
+    prob::Prop prop;
+    prop.diag = true;
     ::util::Probs c1{{{-1, -1}, 1}, {{0, -1}, {1, 2}},
                                     {{0, 0}, {1, 2}}, {{1, 0}, 1}};
-    REQUIRE(c1 == ::util::bridgelet({1, -1, -1}, {3, 1, 0}, true));
+    REQUIRE(c1 == ::util::bridgelet({1, -1, -1}, {3, 1, 0}, prop));
 
     ::util::Probs c2{{{-1, 1}, 1}, {{0, 1}, {1, 9}}, {{-2, 1}, {1, 9}},
         {{-1, 2}, {1, 9}}, {{-1, 0}, {1, 9}}, {{0, 2}, {1, 9}},
         {{0, 0}, {1, 9}}, {{-2, 2}, {1, 9}}, {{-2, 0}, {1, 9}}};
-    REQUIRE(c2 == ::util::bridgelet({3, -1, 1}, {5, -1, 1}, true));
+    REQUIRE(c2 == ::util::bridgelet({3, -1, 1}, {5, -1, 1}, prop));
 
     ::util::Probs c3{{{-1, -2}, 1}, {{0, -1}, 1}, {{1, 0}, 1}};
-    REQUIRE(c3 == ::util::bridgelet({2, -1, -2}, {4, 1, 0}, true));
+    REQUIRE(c3 == ::util::bridgelet({2, -1, -2}, {4, 1, 0}, prop));
 }
 
 TEST_CASE("sequence is correct", "[bridge]") {
-    auto c1 = ::util::bridgelet({1, -1, -1}, {4, 1, 0}, false);
-    auto c2 = ::util::bridgelet({4, 1, 0}, {7, 4, 0}, false);
+    prob::Prop prop;
+    auto c1 = ::util::bridgelet({1, -1, -1}, {4, 1, 0}, prop);
+    auto c2 = ::util::bridgelet({4, 1, 0}, {7, 4, 0}, prop);
     auto merged(c1);
     merged.insert(c2.begin(), c2.end());
     REQUIRE(merged == ::util::sequence({c1, c2}));

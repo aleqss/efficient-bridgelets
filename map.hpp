@@ -31,6 +31,7 @@
 #include <utility>
 #include <vector>
 #include "defs.hpp"
+#include "problems.hpp"
 
 /**
  * @brief Contains code related to the grid: data structures and queries for
@@ -164,8 +165,8 @@ namespace map {
         std::unordered_map<BridgeID, std::forward_list<SubTraj>, TrajHash> map;
         /// The trajectories with their IDs.
         std::unordered_map<std::uint32_t, Traj> tr_reg;
-        /// Whether to allow diagonal movement.
-        bool diag = false;
+        /// Whether to allow diagonal movement and prefer staying.
+        prob::Prop prop {false, false};
 
     public:
         /**
@@ -215,6 +216,11 @@ namespace map {
          * @brief Enable diagonal movement.
          */
         void enable_diag();
+
+        /**
+         * @brief Prefer staying in the current cell over moving to neighbours.
+         */
+        void enable_linger();
 
         /**
          * @brief Retrieve the stored trajectory with a given index.

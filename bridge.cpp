@@ -24,7 +24,6 @@
 #include <cassert>
 #include <iterator>
 #include <tuple>
-#include "problems.hpp"
 
 namespace {
     /**
@@ -100,12 +99,12 @@ namespace {
 }
 
 namespace util {
-    Probs bridgelet(Meas const& s, Meas const& e, bool diag) {
+    Probs bridgelet(Meas const& s, Meas const& e, prob::Prop const& prop) {
         auto const& [t1, x1, y1] = s;
         auto const& [t2, x2, y2] = e;
         assert(t2 > t1);
         return normalise(prob::visit_all(t2 - t1, {x1, y1},
-            {x2, y2}, diag).flatten(t2 - t1), {x1, y1});
+            {x2, y2}, prop).flatten(t2 - t1), {x1, y1});
     }
 
     Probs sequence(std::vector<Probs> const& pr_maps) {
@@ -117,11 +116,12 @@ namespace util {
         return res;
     }
 
-    Probs bridge(Traj const& tr, std::size_t s, std::size_t e, bool diag) {
+    Probs bridge(Traj const& tr, std::size_t s, std::size_t e,
+            prob::Prop const& prop) {
         assert(e > s && e < tr.size());
         std::vector<Probs> seq;
         for (auto i = s; i < e; ++i)
-            seq.emplace_back(bridgelet(tr[i], tr[i + 1], diag));
+            seq.emplace_back(bridgelet(tr[i], tr[i + 1], prop));
         return sequence(seq);
     }
 

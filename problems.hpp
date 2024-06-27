@@ -21,6 +21,7 @@
 #ifndef PROBLEMS_H
 #define PROBLEMS_H
 
+#include <functional>
 #include <unordered_set>
 #include <vector>
 #include "defs.hpp"
@@ -31,19 +32,43 @@
  */
 namespace prob {
     /**
+     * @brief Encapsulate the choice of propagation function and dense / sparse
+     * storage.
+     */
+    struct Prop {
+        /// Whether diagonal movement should be allowed.
+        bool diag = false;
+        /// Whether we prefer staying in current location over uniform.
+        bool stay = false;
+
+        /**
+         * @brief Return the propagation function based on `diag` and `stay`.
+         * @return One of the propagation functions defined in `::dp`.
+         */
+        std::function<Cnt(dp::DP const&, Loc const&, Loc const&,
+            Time const&)> propagate() const;
+
+        /**
+         * @brief Whether we need to use dense storage instead of the more
+         * memory-efficient sparse storage.
+         * @return True when we allow diagonal movement.
+         */
+        bool dense() const;
+    };
+
+    /**
      * @brief For all possible coordinates \f$(x, y)\f$ and for all time steps
      * \f$0 \le t \le T\f$, count the paths from @p start to \f$(x, y)\f$ in
      * \f$t\f$ steps.
      * @param T The maximum number of steps / time limit.
      * @param start The origin, from which we start the paths.
+     * @param prop How to propagate.
      * @param blocked The set of blocked cells, none by default.
-     * @param diag Whether to allow diagonal movement.
      * @return An instance of `dp::DP` with the counts, accessible with
      * `at(x, y, t)`.
      */
-    dp::DP all_paths(Time T, Cell start,
-        std::unordered_set<dp::Blocked> const& blocked = {},
-        bool diag = false);
+    dp::DP all_paths(Time T, Cell start, Prop const& prop,
+        std::unordered_set<dp::Blocked> const& blocked = {});
 
     /**
      * @brief For all possible coordinates \f$(x, y)\f$ and for all time steps
@@ -55,11 +80,11 @@ namespace prob {
      * @param T The maximum number of steps / time limit.
      * @param start The origin, from which we start the paths.
      * @param end The final point of the paths.
-     * @param diag Whether to allow diagonal movement.
+     * @param prop How to propagate.
      * @return An instance of `dp::DP` with the counts, accessible with
      * `at(x, y, t)`.
      */
-    dp::DP visit_all(Time T, Cell start, Cell end, bool diag = false);
+    dp::DP visit_all(Time T, Cell start, Cell end, Prop const& prop);
 
     /**
      * @brief Generate a path from the origin of the DP to @p end according to

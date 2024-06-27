@@ -203,16 +203,17 @@ namespace {
             }, T1);
 
         std::cout << "Computing the DP for all paths... " << std::flush;
+        prob::Prop prop;
         auto [r1, t1] = time_and_save(prob::all_paths, 10u,
-            std::make_pair(0_loc, 0_loc),
-            std::initializer_list<dp::Blocked>{}, false);
+            std::make_pair(0_loc, 0_loc), prop,
+            std::initializer_list<dp::Blocked>{});
         std::cout << "done." << std::endl;
         std::ofstream out1("./data/paths_dp");
         io::dp_write(r1, 10u, {0, 0}, out1);
 
         std::cout << "Computing the DP for visits... " << std::flush;
         auto [r2, t2] = time_and_save(prob::visit_all, T1,
-            std::make_pair(0_loc, 0_loc), std::make_pair(2_loc, 1_loc), false);
+            std::make_pair(0_loc, 0_loc), std::make_pair(2_loc, 1_loc), prop);
         std::cout << "done.\n" << std::endl;
         std::ofstream out2("./data/visits_dp");
         io::flat_write(r2, T1, {0, 0}, out2);
@@ -270,28 +271,29 @@ namespace {
             }, own_ch);
         bool own = (own_ch == 'y');
 
+        prob::Prop prop;
         std::unordered_set<dp::Blocked> wall;
         for (dp::Loc i = -10; i <= 10; ++i)
             wall.emplace(i, 3, 0);
-        auto o1 = prob::all_paths(10, {0, 0}, wall);
+        auto o1 = prob::all_paths(10, {0, 0}, prop, wall);
         std::ofstream wall1("./data/wall");
         io::dp_write(o1, 10, {0, 0}, wall1);
 
         for (dp::Loc i = 1; i <= 3; ++i)
             wall.erase({i, 3, 0});
-        auto o2 = prob::all_paths(10, {0, 0}, wall);
+        auto o2 = prob::all_paths(10, {0, 0}, prop, wall);
         std::ofstream wall2("./data/wall_gap");
         io::dp_write(o2, 10, {0, 0}, wall2);
 
         wall.clear();
         for (dp::Loc i = -1; i <= 2; ++i)
             wall.emplace(i, 3, 0);
-        auto o3 = prob::all_paths(10, {0, 0}, wall);
+        auto o3 = prob::all_paths(10, {0, 0}, prop, wall);
         std::ofstream wall3("./data/sm_wall");
         io::dp_write(o3, 10, {0, 0}, wall3);
 
         wall.erase({0, 3, 0});
-        auto o4 = prob::all_paths(10, {0, 0}, wall);
+        auto o4 = prob::all_paths(10, {0, 0}, prop, wall);
         std::ofstream wall4("./data/sm_wall_gap");
         io::dp_write(o4, 10, {0, 0}, wall4);
 
@@ -307,6 +309,7 @@ namespace {
     void dp_gen_paths() {
         dp::Time T3;
         dp::Cnt pc;
+        prob::Prop prop;
         std::cout << "Part 3: generation\nWe generate several trajectories "
             "from a start to an end point using a DP. We\nneed O(T^3) time for"
             " the DP, and O(T) time for every trajectory of length T.\n";
@@ -337,7 +340,7 @@ namespace {
                     return true;
                 }, si, sj, ei, ej);
 
-            auto paths = prob::all_paths(T3, {si, sj});
+            auto paths = prob::all_paths(T3, {si, sj}, prop);
             for (dp::Cnt c = 0; c < pc; ++c) {
                 auto ti = prob::generate_path(T3, paths, {ei, ej});
                 std::string fname("./data/traj");
@@ -377,6 +380,7 @@ namespace {
                 return t1 < t2 && t2 <= std::numeric_limits<dp::Loc>::max();
             }, ta, tb);
 
+        prob::Prop prop;
         std::ostringstream vname;
         for (dp::Time t = ta; t < tb; ++t) {
             std::cout << t << ' ' << std::flush;
@@ -384,7 +388,7 @@ namespace {
             for (dp::Loc x = 0; x <= tS; ++x) {
                 auto bnd = tS - x < x ? tS - x : x;
                 for (dp::Loc y = 0; y <= bnd; ++y) {
-                    auto dp = prob::visit_all(t, {0_loc, 0_loc}, {x, y});
+                    auto dp = prob::visit_all(t, {0_loc, 0_loc}, {x, y}, prop);
                     vname << "data/visits/v_" << t << '_' << x << '_' << y;
                     std::ofstream outi(vname.str());
                     io::flat_write(dp, t, {0, 0}, outi);
@@ -505,6 +509,13 @@ namespace {
             }, diag_ch);
         bool diag = (diag_ch == 'y');
 
+        char stay_ch;
+        read_flag("Should we prefer staying in the current location? [y/n]",
+            "Please type y or n.", [](char s) {
+                return s == 'y' || s == 'n';
+            }, stay_ch);
+        bool stay = (stay_ch == 'y');
+
         // Training
         std::filesystem::path fname = "./movement";
         fname /= std::to_string(mode);
@@ -513,6 +524,8 @@ namespace {
         map::Map reg;
         if (diag)
             reg.enable_diag();
+        if (stay)
+            reg.enable_linger();
         std::size_t cntr = 0;
         for (auto const& train_id: trainfiles) {
             std::ifstream trainf(fname / std::to_string(train_id));
@@ -619,7 +632,8 @@ namespace {
         using PBD = std::pair<bool, map::Error>;
         std::cout << "Testing trajectories.\n\n";
         std::ostringstream stats_fname;
-        stats_fname << 'm' << mode << (diag ? "-diag-t" : "-std-t");
+        stats_fname << 'm' << mode  << (stay ? "-lin" : "-uni")
+            << (diag ? "-diag-t" : "-std-t");
         for (const auto& thr: thrs)
             stats_fname << thr << '-';
         stats_fname << inter_to_string(use_points)
