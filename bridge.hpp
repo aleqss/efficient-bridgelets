@@ -90,6 +90,16 @@ namespace util {
     Probs ignore_pr(Probs const& pred, Frac const& thr = 0);
 
     /**
+     * @brief Make a simple bead from our probability map by only keeping the
+     * visit probabilities that are above the threshold.
+     * @param pred The computed visit probability map.
+     * @param thr The threshold, above which the probabilities are kept, and
+     * below which they are set to 0.
+     * @return The bead.
+     */
+    Probs clamp_pr(Probs const& pred, Frac const& thr = 0);
+
+    /**
      * @brief Make a simple straight-line bead following the trajectory.
      * @param tr The trajectory with possible gaps.
      * @return The interpolated trajectory, with probability 1 in each relevant

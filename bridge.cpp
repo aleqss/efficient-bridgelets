@@ -148,6 +148,14 @@ namespace util {
         return res;
     }
 
+    Probs clamp_pr(Probs const& pred, Frac const& thr) {
+        Probs res;
+        for (auto const& [cell, pr]: pred)
+            if (pr >= thr)
+                res[cell] = pr;
+        return res;
+    }
+
     Probs straight_line(Traj const& tr) {
         Probs res;
         if (tr.size() < 2)

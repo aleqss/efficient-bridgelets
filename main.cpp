@@ -588,15 +588,19 @@ namespace {
                 auto ground = io::read_traj(trf);
                 auto qtraj = sparse ? io::sparsify(ground) : ground;
                 auto [cov, probs] = reg.query(qtraj, use_points);
-                auto learned = util::ignore_pr(probs, thr);
-                auto pnaive = select_points(qtraj, use_points);
-                auto naive = util::bridge(pnaive, 0, pnaive.size() - 1, diag);
-                auto naiver = util::ignore_pr(naive, thr);
-                auto straight = util::straight_line(pnaive);
+                auto mn_discr = util::ignore_pr(probs, thr);
+                auto mn_clamp = util::clamp_pr(probs, thr);
+                auto p_ell = select_points(qtraj, use_points);
+                auto ellipse = util::bridge(p_ell, 0, p_ell.size() - 1,
+                    {diag, stay});
+                auto ell_discr = util::ignore_pr(ellipse, thr);
+                auto ell_clamp = util::clamp_pr(ellipse, thr);
+                auto straight = util::straight_line(p_ell);
 
                 std::vector<std::pair<char const*, io::Probs const*>> results {
-                    {"main", &probs}, {"learned", &learned},
-                    {"ellipse", &naive}, {"ell_ones", &naiver},
+                    {"main", &probs}, {"mn_discr", &mn_discr},
+                    {"mn_clamp", &mn_clamp}, {"ellipse", &ellipse},
+                    {"br_discr", &ell_discr}, {"br_clamp", &ell_clamp},
                     {"straight", &straight}
                 };
 
@@ -641,15 +645,22 @@ namespace {
         std::ofstream stats(outpath / stats_fname.str());
         stats << "id sz cov main_fp main_fn main";
         for (auto const& thr: thrs)
-            stats << " learned_fp_" << thr << " learned_fn_" << thr
-                << " learned_" << thr;
+            stats << " mn_discr_fp_" << thr << " mn_discr_fn_" << thr
+                << " mn_discr_" << thr;
+        for (auto const& thr: thrs)
+            stats << " mn_clamp_fp_" << thr << " mn_clamp_fn_" << thr
+                << " mn_clamp_" << thr;
         stats << " ellipse_fp ellipse_fn ellipse";
         for (auto const& thr: thrs)
-            stats << " ell_ones_fp_" << thr << " ell_ones_fn_" << thr
-                << " ell_ones_" << thr;
+            stats << " br_discr_fp_" << thr << " br_discr_fn_" << thr
+                << " br_discr_" << thr;
+        for (auto const& thr: thrs)
+            stats << " br_clamp_fp_" << thr << " br_clamp_fn_" << thr
+                << " br_clamp_" << thr;
         stats << " straight_fp straight_fn straight\n";
-        std::vector<PBD> err, err_naive, err_straight;
-        std::unordered_map<double, std::vector<PBD>> err_learned, err_naiver;
+        std::vector<PBD> err, err_ell, err_straight;
+        std::unordered_map<double, std::vector<PBD>> err_mn_discr,
+            err_mn_clamp, err_br_discr, err_br_clamp;
 
         cntr = 0;
         for (auto const& test_id: testfiles) {
@@ -659,20 +670,27 @@ namespace {
                 use_points);
             auto e = reg.pred_error(probs, ground);
 
-            std::unordered_map<double, map::Error> es_learned;
-            for (auto const& thr: thrs)
-                es_learned[thr] = reg.pred_error(util::ignore_pr(probs, thr),
+            std::unordered_map<double, map::Error> es_mn_discr, es_mn_clamp;
+            for (auto const& thr: thrs) {
+                es_mn_discr[thr] = reg.pred_error(util::ignore_pr(probs, thr),
                     ground);
+                es_mn_clamp[thr] = reg.pred_error(util::clamp_pr(probs, thr),
+                    ground);
+            }
 
             auto naive = select_points(sparse ? io::sparsify(ground) : ground,
                 use_points);
-            auto pr_naive = util::bridge(naive, 0, naive.size() - 1, diag);
-            auto e_naive = reg.pred_error(pr_naive, ground);
+            auto pr_ell = util::bridge(naive, 0, naive.size() - 1,
+                {diag, stay});
+            auto e_ell = reg.pred_error(pr_ell, ground);
 
-            std::unordered_map<double, map::Error> es_naiver;
-            for (auto const& thr: thrs)
-                es_naiver[thr] = reg.pred_error(util::ignore_pr(pr_naive, thr),
+            std::unordered_map<double, map::Error> es_br_discr, es_br_clamp;
+            for (auto const& thr: thrs) {
+                es_br_discr[thr] = reg.pred_error(util::ignore_pr(pr_ell, thr),
                     ground);
+                es_br_clamp[thr] = reg.pred_error(util::clamp_pr(pr_ell, thr),
+                    ground);
+            }
 
             auto e_straight = reg.pred_error(util::straight_line(naive),
                 ground);
@@ -680,18 +698,24 @@ namespace {
             stats << test_id << ' ' << ground.size() << ' ' << c << ' ' << e
                 << ' ';
             for (auto const& thr: thrs)
-                stats << es_learned.at(thr) << ' ';
-            stats << e_naive << ' ';
+                stats << es_mn_discr.at(thr) << ' ';
             for (auto const& thr: thrs)
-                stats << es_naiver.at(thr) << ' ';
+                stats << es_mn_clamp.at(thr) << ' ';
+            stats << e_ell << ' ';
+            for (auto const& thr: thrs)
+                stats << es_br_discr.at(thr) << ' ';
+            for (auto const& thr: thrs)
+                stats << es_br_clamp.at(thr) << ' ';
             stats << e_straight << '\n';
 
             err.emplace_back(c, e);
-            err_naive.emplace_back(c, e_naive);
+            err_ell.emplace_back(c, e_ell);
             err_straight.emplace_back(c, e_straight);
             for (auto const& thr: thrs) {
-                err_learned[thr].emplace_back(c, es_learned.at(thr));
-                err_naiver[thr].emplace_back(c, es_naiver.at(thr));
+                err_mn_discr[thr].emplace_back(c, es_mn_discr.at(thr));
+                err_mn_clamp[thr].emplace_back(c, es_mn_clamp.at(thr));
+                err_br_discr[thr].emplace_back(c, es_br_discr.at(thr));
+                err_br_clamp[thr].emplace_back(c, es_br_clamp.at(thr));
             }
 
             ++cntr;
@@ -703,14 +727,20 @@ namespace {
             << " trajectories.\n\n";
 
         std::vector<std::pair<std::string, decltype(err)>> it {
-            {"Bridges", err}, {"Ellipse", err_naive},
+            {"Bridges", err}, {"Ellipse", err_ell},
             {"Straight line bead", err_straight}};
         for (auto const& thr: thrs)
             it.emplace_back("Learned bead " + std::to_string(thr),
-                err_learned.at(thr));
+                err_mn_discr.at(thr));
+        for (auto const& thr: thrs)
+            it.emplace_back("Learned clamped " + std::to_string(thr),
+                err_mn_clamp.at(thr));
         for (auto const& thr: thrs)
             it.emplace_back("Ellipse bead " + std::to_string(thr),
-                err_naiver.at(thr));
+                err_br_discr.at(thr));
+        for (auto const& thr: thrs)
+            it.emplace_back("Ellipse clamped " + std::to_string(thr),
+                err_br_clamp.at(thr));
 
         auto err_cmp = [](map::Error const& a, map::Error const& b) {
             return a.total < b.total;
