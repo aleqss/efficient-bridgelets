@@ -121,13 +121,14 @@ def main() -> None:
     anfiles = args.bridges
     ofiles = args.output
 
-    beads = ['main', 'learned', 'ellipse', 'ell_ones', 'straight']
+    beads = ['main', 'mn_discr', 'mn_clamp', 'ellipse', 'br_discr', 'br_clamp',
+        'straight']
     for trid in args.tr_id:
         vprint(f'processing trajectory {trid}:', end='', flush=True)
         for bd in beads:
             vprint(f' {bd}', end='', flush=True)
-            plot_bridge(anfiles / str(trid) / bd, trfiles / str(trid),
-                ofiles / (str(trid) + '_' + bd + '.png'))
+            plot_bridge(anfiles / str(args.mode) / str(trid) / bd,
+                trfiles / str(trid), ofiles / (str(trid) + '_' + bd + '.png'))
         vprint()
 
 if __name__ == '__main__':

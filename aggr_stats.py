@@ -11,22 +11,32 @@
 # General Public License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
+'''
+Import the test results and summarise them.
+'''
+
 import pathlib
 import pandas
 
-df: dict[int, pandas.DataFrame] = {}
-pandas.options.display.max_columns = None
+def main() -> list[dict[int, pandas.DataFrame]]:
+    '''Process the test results.'''
+    df: list[dict[int, pandas.DataFrame]] = [{}, {}]
+    pandas.options.display.max_columns = None # type: ignore
 
-for pr in ['-lin', '-uni']:
-    for i in range(1, 5):
-        fname = 'm' + str(i) + pr + '-diag-t0-0.1-0.5-none-sp'
-        floc = pathlib.Path('analysis') / str(i) / fname
+    for ind, name in enumerate(['-lin', '-uni']):
+        for i in range(1, 5):
+            fname = 'm' + str(i) + name + '-diag-t0-0.1-0.4-0.5-0.6-none-sp'
+            floc = pathlib.Path('analysis') / str(i) / fname
 
-        df[i] = pandas.read_table(floc, sep=' ', index_col='id')
-        df[i]['cov'] = df[i]['cov'].astype(bool)
+            df[ind][i] = pandas.read_table(floc, sep=' ', index_col='id')
+            df[ind][i]['cov'] = df[ind][i]['cov'].astype(bool)
 
-        print('mode', str(i), pr)
-        print('full')
-        print(df[i].describe())
-        print('covered')
-        print(df[i][df[i]['cov']].describe())
+            print('mode', str(i), 'linger' if ind == 0 else 'uniform')
+            print('full')
+            print(df[ind][i].describe())
+            print('covered')
+            print(df[ind][i][df[ind][i]['cov']].describe())
+    return df
+
+if __name__ == '__main__':
+    data = main()
