@@ -89,11 +89,15 @@ def parse_args() -> argparse.Namespace:
                         default=False,
                         help='assume the model allows diagonal movement')
     parser.add_argument('-k', '--keep-original', action='store_true',
-        default=False, help='do not attempt to fill in assured measurements')
-    parser.add_argument('-s', '--search', action='store_true',
-        default=False, help='search for good discretisation parameters')
-    parser.add_argument('-z', '--zoom-out', action='store_true',
-        default=False, help='discretise so that all the data is dense')
+                        default=False,
+                        help='do not attempt to fill in assured measurements')
+    prec = parser.add_mutually_exclusive_group()
+    prec.add_argument('-f', '--fine', action='store_true', default=False,
+                      help='use a fine grid, more suitable for applications')
+    prec.add_argument('-s', '--search', action='store_true', default=False,
+                      help='search for good discretisation parameters')
+    parser.add_argument('-z', '--zoom-out', action='store_true', default=False,
+                        help='discretise so that all the data is dense')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='show progress information')
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')
@@ -106,7 +110,11 @@ def parse_args() -> argparse.Namespace:
 
     if args.only_download:
         print('only downloading, all options except -v/--verbose ignored')
+    elif args.zoom_out and not args.search:
+        print('not searching for discretisation parameters, -z/--zoom-out'
+              'ignored')
     return args
+
 
 # -----------------------------------------------------------------------------
 # DOWNLOAD
@@ -505,10 +513,14 @@ def print_trs(df: pandas.DataFrame, subdir: pathlib.Path) -> None:
         with open(cur_dir / 'test.txt', 'w', encoding='utf-8') as tefile:
             print(*test, sep='\n', file=tefile)
 
-def process_data(subdir: pathlib.Path, search: bool = False) -> None:
+
+def process_data(subdir: pathlib.Path, fine: bool = False,
+                 search: bool = False) -> None:
     '''Split data into subtrajectories and discretise them.'''
-    deltat = {1: 40, 2: 47, 3: 70, 4: 20, 99: 1}
-    deltax = {1: 80, 2: 960, 3: 1820, 4: 105, 99: 1}
+    deltat = ({1: 1, 2: 5, 3: 5, 4: 4, 99: 1} if fine else
+              {1: 40, 2: 47, 3: 70, 4: 20, 99: 1})
+    deltax = ({1: 2, 2: 102, 3: 130, 4: 21, 99: 1} if fine else
+              {1: 80, 2: 960, 3: 1820, 4: 105, 99: 1})
 
     df = project_data(subdir)
 
@@ -538,7 +550,8 @@ def main() -> None:
     if not args.only_process:
         get_unpack_data(args.subdir)
     if not args.only_download:
-        process_data(args.subdir, args.search)
+        process_data(args.subdir, args.fine, args.search)
+
 
 if __name__ == '__main__':
     main()
