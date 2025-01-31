@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, 2024 Aleksandr Popov
+# Copyright 2023, 2024, 2025 Aleksandr Popov
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
 # Software Foundation, either version 3 of the License, or (at your option)
@@ -32,7 +32,7 @@ import sys
 import urllib.request
 import zipfile
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import cartopy.crs # type: ignore
@@ -46,6 +46,8 @@ class conf: # pylint: disable=C0103
     fill_in: bool = True
     dense: bool = False
     diagonal: bool = False
+    straight: set[str] = field(default_factory=set)
+
 
 def vprint(*args: Any, **kwargs: Any) -> Any:
     '''A simple logging wrapper.'''
@@ -67,7 +69,13 @@ def parse_args() -> argparse.Namespace:
     acts.add_argument('-d', '--only-download', action='store_true',
         default=False, help='skip processing the data')
     acts.add_argument('-p', '--only-process', action='store_true',
-        default=False, help='process already available trajectories.tsv')
+                      default=False,
+                      help='process already available trajectories.tsv')
+    parser.add_argument('-m', '--straight', action='extend', nargs=1,
+                        choices=['si', 'dl'], help='estimate straightness for '
+                        'each trajectory using sinuosity (si) or maximum '
+                        'distance from the line between the endpoints (dl), '
+                        'use this option twice if needed')
     parser.add_argument('-g', '--use-diagonals', action='store_true',
         default=False, help='assume the model allows diagonal movement')
     parser.add_argument('-k', '--keep-original', action='store_true',
@@ -83,8 +91,8 @@ def parse_args() -> argparse.Namespace:
         print(f'error: {args.subdir} is not an existing directory')
         parser.print_help()
         sys.exit(1)
-    if args.only_download and (args.use_diagonals or args.keep_original or
-            args.search or args.zoom_out):
+
+    if args.only_download:
         print('only downloading, all options except -v/--verbose ignored')
     return args
 
@@ -208,33 +216,93 @@ def test_valid(traj: pandas.DataFrame) -> tuple[pandas.DataFrame, bool]:
         return res, dense
     return fill_gaps(res)
 
+
+def straightness(df: pandas.DataFrame) -> float:
+    '''Estimate straightness by maximum deviation from the straight line.'''
+    dfxy = df[['easting', 'northing']].copy()
+    x1, y1 = dfxy.iloc[0]
+    x2, y2 = dfxy.iloc[-1]
+
+    if x1 == x2 and y1 == y2:
+        dfxy['xa'] = dfxy['easting'] - x1
+        dfxy['ya'] = dfxy['northing'] - y1
+        return dfxy[['xa', 'ya']].apply(lambda r: np.hypot(*r), axis=1).max()
+
+    dx, dy = x2 - x1, y2 - y1
+    add = x2 * y1 - y2 * x1
+    length = np.hypot(dx, dy)
+
+    def dist(x0: float, y0: float) -> float:
+        '''Distance between a point (x0, y0) and the line.'''
+        return np.abs(dy * x0 - dx * y0 + add) / length
+
+    return dfxy.apply(lambda r: dist(*r), axis=1).max()
+
+
+def sinuosity(df: pandas.DataFrame) -> float:
+    '''Estimate straightness by sinuosity (path length / straight length).'''
+    dfxy = df[['easting', 'northing']]
+    x1, y1 = dfxy.iloc[0]
+    x2, y2 = dfxy.iloc[-1]
+
+    if x1 == x2 and y1 == y2:
+        return np.inf
+
+    length = np.hypot(x2 - x1, y2 - y1)
+    pl = dfxy.diff().iloc[1:].apply(lambda r: np.hypot(*r), axis=1).sum()
+    return pl / length
+
+
+def _write_tr(pid: int, pnum: int, fname: int, tr: pandas.DataFrame,
+              cd: pathlib.Path) -> None:
+    '''Output a discretised trajectory to a file.'''
+    ftemp = 'pid = {}, pnum = {}\n\n{}'
+    with open(cd / str(fname), 'w', encoding='utf-8') as cfile:
+        cfile.write(
+            ftemp.format(
+                pid, pnum, tr.to_csv(index=False, columns=['t', 'x', 'y'])
+            )
+        )
+
+
+def _write_str(strdev: pandas.DataFrame, cd: pathlib.Path) -> None:
+    '''Output the straightness values to a file.'''
+    to_wr = ['fname'] + sorted(list(conf.straight))
+    strdev.to_csv(cd / 'straightness', sep=' ', columns=to_wr, index=False,
+                  encoding='utf-8', lineterminator='\n')
+
+
 def split_count(df: pandas.DataFrame, cur_dir: pathlib.Path,
         write_out: bool = False) -> tuple[list[int], list[int], int]:
     '''Count how well we do (and output stuff).'''
-    ftemp = 'pid = {}, pnum = {}\n\n{}'
     if write_out:
         cur_dir.mkdir(mode=0o755, exist_ok=True)
+
     sparse, dense = [], []
     fname = 0
-    lengths: list[int] = []
-    too_short = 0
+    strdev: list[tuple[int, float, float]] = []
+
     for (pid, pnum), gr in df.groupby(['pid', 'pnum'], sort=False):
         if fname > 0 and fname % 100000 == 0:
             vprint(f'processed {fname} trajectories')
-        lengths.append(gr.shape[0])
+
         if gr.shape[0] > 2:
+            if conf.straight:
+                strdev.append((fname, straightness(gr), sinuosity(gr)))
             c, d = test_valid(gr[['t', 'x', 'y']])
             if c.shape[0] > 2 and d:
                 dense.append(fname)
             elif c.shape[0] > 2:
                 sparse.append(fname)
-            elif c.shape[0] > 0:
-                too_short += 1
+
             if write_out:
-                with open(cur_dir / str(fname), 'w', encoding='utf-8') as cfile:
-                    cfile.write(ftemp.format(pid, pnum, c.to_csv(index=False,
-                        columns = ['t', 'x', 'y'])))
+                _write_tr(pid, pnum, fname, c, cur_dir)
             fname += 1
+
+    if write_out and conf.straight:
+        _write_str(pandas.DataFrame(strdev, columns=['fname', 'dl', 'si']),
+                   cur_dir)
+
     vprint(f'processed {fname} trajectories')
     return sparse, dense, fname
 
@@ -397,6 +465,8 @@ def main() -> None:
     args = parse_args()
     if args.verbose:
         conf.verbose = True
+    if args.straight:
+        conf.straight = {*args.straight}
     if args.use_diagonals:
         conf.diagonal = True
     if args.keep_original:
