@@ -35,12 +35,18 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
-import cartopy.crs # type: ignore
-import numpy as np
-import pandas
+try:
+    import cartopy.crs  # type: ignore
+    import numpy as np
+    import pandas
+except ImportError as err:
+    print(err)
+    print('Please install numpy, pandas, and cartopy.\nSee requirements.txt.')
+    sys.exit(1)
+
 
 @dataclass(eq=False, kw_only=True)
-class conf: # pylint: disable=C0103
+class conf:  # pylint: disable=C0103
     '''Global config.'''
     verbose: bool = False
     fill_in: bool = True
@@ -50,24 +56,27 @@ class conf: # pylint: disable=C0103
 
 
 def vprint(*args: Any, **kwargs: Any) -> Any:
-    '''A simple logging wrapper.'''
+    '''A simple logging wrapper, passing `args` and `kwargs` to `print()`.'''
     if conf.verbose:
         print(*args, **kwargs)
+
 
 # -----------------------------------------------------------------------------
 # INTERFACE
 # -----------------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
     '''Parse the arguments to the script, run with -h for help.'''
-    parser = argparse.ArgumentParser(description='download and prepare '
-        'OpenPFLOW data for the experiments', epilog='further links and '
-        'explanation at https://github.com/aleqss/efficient-bridgelets')
+    parser = argparse.ArgumentParser(
+        description='download and prepare OpenPFLOW data for the experiments',
+        epilog='further links and explanation at '
+               'https://github.com/aleqss/efficient-bridgelets'
+    )
     parser.add_argument('subdir', nargs='?', type=pathlib.Path,
-        default=pathlib.Path(sys.argv[0]).resolve().parent,
-        help='store the data in a given directory')
+                        default=pathlib.Path(sys.argv[0]).resolve().parent,
+                        help='store the data in a given directory')
     acts = parser.add_mutually_exclusive_group()
     acts.add_argument('-d', '--only-download', action='store_true',
-        default=False, help='skip processing the data')
+                      default=False, help='skip processing the data')
     acts.add_argument('-p', '--only-process', action='store_true',
                       default=False,
                       help='process already available trajectories.tsv')
@@ -77,7 +86,8 @@ def parse_args() -> argparse.Namespace:
                         'distance from the line between the endpoints (dl), '
                         'use this option twice if needed')
     parser.add_argument('-g', '--use-diagonals', action='store_true',
-        default=False, help='assume the model allows diagonal movement')
+                        default=False,
+                        help='assume the model allows diagonal movement')
     parser.add_argument('-k', '--keep-original', action='store_true',
         default=False, help='do not attempt to fill in assured measurements')
     parser.add_argument('-s', '--search', action='store_true',
@@ -85,8 +95,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-z', '--zoom-out', action='store_true',
         default=False, help='discretise so that all the data is dense')
     parser.add_argument('-v', '--verbose', action='store_true',
-        help='show progress information')
+                        help='show progress information')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.0')
     args = parser.parse_args()
+
     if not args.subdir.is_dir():
         print(f'error: {args.subdir} is not an existing directory')
         parser.print_help()
@@ -105,8 +117,9 @@ def download(part: str) -> str:
         with zipfile.ZipFile(io.BytesIO(sin.read())) as archive:
             return archive.extract(archive.infolist()[0])
 
+
 def get_unpack_data(subdir: pathlib.Path) -> None:
-    '''Download the data, extract it, and concatenate the files in subdir.'''
+    '''Download the data, extract it, and concatenate the files in `subdir`.'''
     baseurl = ('https://open-research-data.s3.ap-northeast-1.amazonaws.com/'
                'openpflow/trajectory0')
     parts = (baseurl + str(i) + '.tsv.zip' for i in range(1, 10))
@@ -130,28 +143,39 @@ def get_unpack_data(subdir: pathlib.Path) -> None:
             crcv = zlib.crc32(buf, crcv)
     assert crcv == 0x21ff3588, 'Download failed, please retry.'
 
+
 # -----------------------------------------------------------------------------
 # BASIC PROCESSING
 # -----------------------------------------------------------------------------
-def diag_length(x1: int, x2: int, y1: int, y2: int) -> int:
+def _diag_length(x1: int, x2: int, y1: int, y2: int) -> int:
     '''Compute the shortest path length allowing diagonal movement.'''
     return max(abs(x2 - x1), abs(y2 - y1))
 
-def rect_length(x1: int, x2: int, y1: int, y2: int) -> int:
+
+def _rect_length(x1: int, x2: int, y1: int, y2: int) -> int:
     '''Compute the shortest path length when only going through neighbours.'''
     return abs(x2 - x1) + abs(y2 - y1)
 
-def last_valid(buf: list[list[int]], last: list[int]) -> list[int]:
-    '''Find the last element in buf that is valid w.r.t last.'''
+
+def _last_valid(buf: list[list[int]], last: list[int]) -> list[int]:
+    '''Find the last element in `buf` that is valid w.r.t. `last`.'''
+    assert len(last) == 3, 'last should be a single (t, x, y) measurement'
     tb, xb, yb = last
-    dist = diag_length if conf.diagonal else rect_length
+    dist = _diag_length if conf.diagonal else _rect_length
     for t, x, y in reversed(buf):
         if dist(xb, x, yb, y) <= t - tb:
             return [t, x, y]
     return []
 
+
 def resolve_dups(traj: pandas.DataFrame) -> pandas.DataFrame:
-    '''Resolve duplicates by picking the last valid one w.r.t. already seen.'''
+    '''
+    Resolve duplicates by picking the last valid one w.r.t. already seen.
+
+    Given a (t, x, y) dataframe `traj`, we process it in order, resolving
+    multiple measurements at the same timestamp t.
+    '''
+
     buffer: list[list[int]] = []
     dedup: list[list[int]] = []
     for t, x, y in traj.itertuples(index=False):
@@ -168,21 +192,31 @@ def resolve_dups(traj: pandas.DataFrame) -> pandas.DataFrame:
             buffer.append([t, x, y])
     return pandas.DataFrame(dedup, columns=['t', 'x', 'y'])
 
+
 def interpolate(a: list[int], b: list[int]) -> list[list[int]]:
-    '''Interpolate between a = [t, x, y] and b = [t, x, y] if possible.'''
+    '''Interpolate between a = [ta, xa, ya] and b = [tb, xb, yb].'''
     ta, xa, ya = a
     tb, xb, yb = b
-    assert abs(xb - xa) + abs(yb - ya) == tb - ta and (yb == ya or xb == xa),\
-        'Cannot interpolate.'
+    assert abs(xb - xa) + abs(yb - ya) == tb - ta and (yb == ya or xb == xa), \
+           'cannot interpolate'
     va, vb = (xa, xb) if abs(xb - xa) == tb - ta else (ya, yb)
     genv = range(va, vb + 1) if va < vb else range(va, vb - 1, -1)
     gent = range(ta, tb + 1)
     res = [list(gent), list(genv), [ya] * (tb + 1 - ta)] if ya == yb else \
-        [list(gent), [xa] * (tb + 1 - ta), list(genv)]
+          [list(gent), [xa] * (tb + 1 - ta), list(genv)]
     return [[r[i] for r in res] for i in range(tb - ta + 1)]
 
+
 def fill_gaps(df: pandas.DataFrame) -> tuple[pandas.DataFrame, bool]:
-    '''Attempt to fill in easy gaps, if impossible return unchanged.'''
+    '''
+    Attempt to fill in easy gaps, if impossible return unchanged.
+
+    An easy gap is one between (t, x, y) and (t + k, x + k, y), or
+    symmetric with +/- and x/y. In this scenario, the model allows exactly
+    one sequence of steps. Return either the original dataframe or a dense
+    one if successful, and whether it has been made dense.
+    '''
+
     res: list[list[int]] = []
     for t, x, y in df.itertuples(index=False):
         if not res:
@@ -198,17 +232,24 @@ def fill_gaps(df: pandas.DataFrame) -> tuple[pandas.DataFrame, bool]:
             res.append([t, x, y])
     return pandas.DataFrame(res, columns=['t', 'x', 'y']), True
 
+
 def test_valid(traj: pandas.DataFrame) -> tuple[pandas.DataFrame, bool]:
-    '''Check that the trajectory is valid and measured densely.'''
+    '''
+    Check that the trajectory is valid and measured densely.
+
+    A trajectory is valid if:
+    * between every pair of measurements, the Manhattan distance is at most
+      the time difference;
+    * and there is at most one measurement per time step.
+
+    First, resolve duplicates by picking the last valid measurement.
+    Side effect: we know that all steps are valid.
+    Then, either return or attempt to fill in gaps in density.
+    '''
+
     assert traj.columns.to_list() == ['t', 'x', 'y'] and traj.shape[0] > 2, \
-        'Trajectory has incorrect shape'
-    # A trajectory is valid if:
-    # * between every pair of measurements, the Manhattan distance is at most
-    #   the time difference;
-    # * and there is at most one measurement per time step.
-    # First, resolve duplicates by picking the last valid measurement.
-    # Side effect: we know that all steps are valid.
-    # Then, either return or attempt to fill in gaps in density.
+           'trajectory has incorrect shape'
+
     res = traj.sort_values(by='t', kind='stable', ignore_index=True)
     res = resolve_dups(res)
     dense = res['t'].diff().iloc[1:].eq(1).all()
@@ -273,7 +314,7 @@ def _write_str(strdev: pandas.DataFrame, cd: pathlib.Path) -> None:
 
 
 def split_count(df: pandas.DataFrame, cur_dir: pathlib.Path,
-        write_out: bool = False) -> tuple[list[int], list[int], int]:
+                write_out: bool = False) -> tuple[list[int], list[int], int]:
     '''Count how well we do (and output stuff).'''
     if write_out:
         cur_dir.mkdir(mode=0o755, exist_ok=True)
@@ -306,66 +347,72 @@ def split_count(df: pandas.DataFrame, cur_dir: pathlib.Path,
     vprint(f'processed {fname} trajectories')
     return sparse, dense, fname
 
+
 # -----------------------------------------------------------------------------
 # TRIAL
 # -----------------------------------------------------------------------------
-def est_dx(dt: int, speed: int, ratio: float = 3.6) -> int:
+def _est_dx(dt: int, speed: int, ratio: float = 3.6) -> int:
     '''Find a good ratio for the distance, so we do not skip over.'''
     return max(int(speed * dt / ratio), 1)
 
-def trial_discr(res: pandas.DataFrame, cur_dir: pathlib.Path, deltax: int,
-        deltat: int) -> tuple[list[int], list[int], int]:
+
+def _trial_discr(res: pandas.DataFrame, cur_dir: pathlib.Path, deltax: int,
+                 deltat: int) -> tuple[list[int], list[int], int]:
     '''Discretise and count, helper function.'''
     res['x'] = (res['easting'] // deltax).astype('int64')
     res['y'] = (res['northing'] // deltax).astype('int64')
     grouped = res.groupby(['pid', 'pnum'], sort=False)
-    res['t'] = ((res['time'] - grouped['time'].transform('min')
-            ).dt.total_seconds() // deltat).astype('int64')
+    res['t'] = (
+        (res['time'] - grouped['time'].transform('min')).dt.total_seconds()
+        // deltat).astype('int64')
     sp, dn, tot = split_count(res, cur_dir)
     vprint(f'Total: {tot}, sparse: {len(sp)}, dense: {len(dn)}')
     vprint(f'{(len(sp) + len(dn)) / tot:.2%} valid, '
-        f'of which {len(dn) / (len(sp) + len(dn)):.2%} dense')
+           f'of which {len(dn) / (len(sp) + len(dn)):.2%} dense')
     return sp, dn, tot
 
-def find_split(df: pandas.DataFrame, cur_dir: pathlib.Path, max_speed: int,
+
+def find_split(
+        df: pandas.DataFrame, cur_dir: pathlib.Path, max_speed: int,
         ratio: float = 3.6, goal_dense: int = 15) -> tuple[int, int, float]:
     '''Discretise appropriately for a single mode.'''
     deltat = 1
-    deltax = est_dx(deltat, max_speed, ratio)
+    deltax = _est_dx(deltat, max_speed, ratio)
     valid = 0.0
 
     res = df.copy()
     while True:
         vprint(f'trying dt = {deltat}, dx = {deltax}')
-        sp, dn, tot = trial_discr(res, cur_dir, deltax, deltat)
+        sp, dn, tot = _trial_discr(res, cur_dir, deltax, deltat)
         valid = (len(sp) + len(dn)) / tot
         if 100 * len(dn) >= goal_dense * (len(dn) + len(sp)):
             break
         deltat = 2 * deltat
-        deltax = est_dx(deltat, max_speed, ratio)
+        deltax = _est_dx(deltat, max_speed, ratio)
 
     if deltat > 4:
         lt, rt = deltat // 2, deltat
         deltat = (lt + rt) // 2
-        deltax = est_dx(deltat, max_speed, ratio)
+        deltax = _est_dx(deltat, max_speed, ratio)
         while lt < deltat < rt:
             vprint(f'trying dt = {deltat}, dx = {deltax}')
-            sp, dn, tot = trial_discr(res, cur_dir, deltax, deltat)
+            sp, dn, tot = _trial_discr(res, cur_dir, deltax, deltat)
             if 100 * len(dn) >= goal_dense * (len(dn) + len(sp)):
                 rt = deltat
                 valid = (len(sp) + len(dn)) / tot
             else:
                 lt = deltat
             deltat = (lt + rt) // 2
-            deltax = est_dx(deltat, max_speed, ratio)
+            deltax = _est_dx(deltat, max_speed, ratio)
         deltat = rt
-        deltax = est_dx(deltat, max_speed, ratio)
+        deltax = _est_dx(deltat, max_speed, ratio)
     return deltat, deltax, valid
 
+
 def finetune(df: pandas.DataFrame, subdir: pathlib.Path,
-        goal_dense: int = 15) -> tuple[dict[int, int], dict[int, int]]:
+             goal_dense: int = 15) -> tuple[dict[int, int], dict[int, int]]:
     '''Find the appropriate discretisation boundaries.'''
-    speeds = {1: 5, 2: 87, 3: 125, 4: 15} # ~99th percentile
+    speeds = {1: 5, 2: 87, 3: 125, 4: 15}  # ~99th percentile
     deltat, deltax = {99: 1}, {99: 1}
     df['pnum'] = df['mode'].ne(df['mode'].shift()).cumsum()
     for mode in [1, 2, 3, 4]:
@@ -374,7 +421,7 @@ def finetune(df: pandas.DataFrame, subdir: pathlib.Path,
         best_v, best_r = 0.0, 0.0
         for ratio in [4.2, 3.6, 3.0, 2.4, 1.8, 1.2]:
             dt, dx, v = find_split(current, subdir / str(mode), speeds[mode],
-                ratio, goal_dense)
+                                   ratio, goal_dense)
             if v > best_v:
                 deltat[mode] = dt
                 deltax[mode] = dx
@@ -382,8 +429,9 @@ def finetune(df: pandas.DataFrame, subdir: pathlib.Path,
             if best_v > 0.9:
                 break
         vprint(f'at least 90% valid in mode {mode}: {best_v:.2%} '
-            f'with ratio {best_r}, {dt=}, {dx=}')
+               f'with ratio {best_r}, {dt=}, {dx=}')
     return deltat, deltax
+
 
 # -----------------------------------------------------------------------------
 # FINAL
@@ -393,7 +441,7 @@ def project_data(subdir: pathlib.Path) -> pandas.DataFrame:
     # Load the TSV file into a pandas dataframe
     vprint('reading dataframe')
     df = pandas.read_csv(subdir / 'trajectories.tsv', sep='\t', header=None,
-        names=['pid', 'time', 'lon', 'lat', 'mode'])
+                         names=['pid', 'time', 'lon', 'lat', 'mode'])
     df['time'] = pandas.to_datetime(df['time'], format="%Y-%m-%d %H:%M:%S")
 
     # Convert lon/lat to UTM zone 54 eastings/northings
@@ -403,24 +451,26 @@ def project_data(subdir: pathlib.Path) -> pandas.DataFrame:
     df.drop(columns=['z_dummy', 'lon', 'lat'], inplace=True)
     return df
 
+
 def discretise(df: pandas.DataFrame, deltat: dict[int, int],
-        deltax: dict[int, int]) -> pandas.DataFrame:
+               deltax: dict[int, int]) -> pandas.DataFrame:
     '''Discretise the measurements according to mode.'''
     res = df.copy()
     # Discretise eastings/northings to x/y
     res['x'] = (res['easting'] // res['mode'].map(deltax)).astype('int64')
     res['y'] = (res['northing'] // res['mode'].map(deltax)).astype('int64')
-    res.drop(columns=['easting', 'northing'], inplace=True)
 
     # Group by shifts in mode for each pid, compute time offset from start,
     # discretise the time steps
     res['dt'] = res['mode'].map(deltat)
     res['pnum'] = res['mode'].ne(res['mode'].shift()).cumsum()
     grouped = res.groupby(['pid', 'pnum'], sort=False)
-    res['t'] = ((res['time'] - grouped['time'].transform('min')
-                ).dt.total_seconds() // res['dt']).astype('int64')
+    res['t'] = (
+        (res['time'] - grouped['time'].transform('min')).dt.total_seconds()
+        // res['dt']).astype('int64')
     res.drop(columns=['time', 'dt'], inplace=True)
     return res
+
 
 def print_trs(df: pandas.DataFrame, subdir: pathlib.Path) -> None:
     '''Export trajectories to files.'''
@@ -432,14 +482,14 @@ def print_trs(df: pandas.DataFrame, subdir: pathlib.Path) -> None:
         sp, dn, tot = split_count(current, cur_dir, True)
         vprint(f'Total: {tot}, sparse: {len(sp)}, dense: {len(dn)}')
         vprint(f'{(len(sp) + len(dn)) / tot:.2%} valid, '
-            f'of which {len(dn) / (len(sp) + len(dn)):.2%} dense')
+               f'of which {len(dn) / (len(sp) + len(dn)):.2%} dense')
         test, train = dn, sp
         if conf.dense:
             random.shuffle(dn)
             spl = len(dn) // 6
             test, train = sorted(dn[:spl]), sorted(dn[spl:])
         vprint(f'using {len(train)} training and {len(test)} testing '
-            'trajectories')
+               'trajectories')
         with open(cur_dir / 'train.txt', 'w', encoding='utf-8') as trfile:
             print(*train, sep='\n', file=trfile)
         with open(cur_dir / 'test.txt', 'w', encoding='utf-8') as tefile:
@@ -451,14 +501,15 @@ def process_data(subdir: pathlib.Path, search: bool = False) -> None:
     deltax = {1: 80, 2: 960, 3: 1820, 4: 105, 99: 1}
 
     df = project_data(subdir)
-    goal_dense = 98 if conf.dense else 15
 
     if search:
+        goal_dense = 98 if conf.dense else 15
         deltat, deltax = finetune(df, subdir, goal_dense)
         vprint(f'dt: {deltat}\ndx: {deltax}')
 
     prep = discretise(df, deltat, deltax)
     print_trs(prep, subdir)
+
 
 def main() -> None:
     '''Download and prepare the data.'''
@@ -481,19 +532,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
-# Goal: ≥ 90% valid, of which ≥15% dense, with smallest dx
-# Using diagonals
-# Ratio     1.2             1.8             2.4             3.0             3.6             4.2
-# Mode 1    42/175: 94.94%  42/116: 94.95%  40/83: 93.66%   38/63: 79.32%   32/44: 44.58%   28/33: 14.31%
-# Mode 2    48/3480: 94.36% 48/2320: 94.36% 48/1740: 94.36% 48/1392: 93.86% 48/1160: 91.95% 47/973: 90.53%
-# Mode 3    71/7395: 93.15% 71/4930: 93.15% 71/3697: 93.15% 71/2958: 93.15% 71/2465: 93.17% 70/2083: 93.44%
-# Mode 4    21/262: 98.28%  21/175: 98.28%  20/125: 97.62%  19/95: 83.72%   17/70: 49.32%   14/50: 17.75%
-# In m1: 40/83, can try 38--40 with 64--82
-# In m2: 47/973, can try 47 with < 973
-# In m3: 70/2083, can try 70 with < 2083
-# In m4: 20/125, can try 19--20 with 96--124
-
-# No diagonals
-# Ratio     1.2             1.8
-# Mode 1    40/166: 72.32%
