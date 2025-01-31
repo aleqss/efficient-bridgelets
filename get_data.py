@@ -178,18 +178,28 @@ def resolve_dups(traj: pandas.DataFrame) -> pandas.DataFrame:
 
     buffer: list[list[int]] = []
     dedup: list[list[int]] = []
+
+    def select_last() -> list[int]:
+        '''Pick the last valid measurement from `buffer` to follow `dedup`.'''
+        e = _last_valid(buffer, dedup[-1]) if dedup else buffer[-1]
+        dedup.append(e)
+        return e
+
     for t, x, y in traj.itertuples(index=False):
         if not buffer:
             buffer = [[t, x, y]]
             continue
         if buffer[0][0] < t:
-            e = last_valid(buffer, dedup[-1]) if dedup else buffer[-1]
+            e = select_last()
             if not e:
                 return pandas.DataFrame(columns=['t', 'x', 'y'])
-            dedup.append(e)
             buffer = [[t, x, y]]
         else:
             buffer.append([t, x, y])
+
+    e = select_last()
+    if not e:
+        return pandas.DataFrame(columns=['t', 'x', 'y'])
     return pandas.DataFrame(dedup, columns=['t', 'x', 'y'])
 
 
